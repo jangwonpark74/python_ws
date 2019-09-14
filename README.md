@@ -1,5 +1,8 @@
 # Python 
 
+## Hitch Hicker's guide to Python
+- [learning python](https://docs.python-guide.org/intro/learning/)
+
 ## Test Driven Python Development
 - [Test Driven Development: what it is, and what it is not](https://medium.freecodecamp.org/test-driven-development-what-it-is-and-what-it-is-not-41fa6bca02a2)
 

@@ -10,3 +10,7 @@
 
 ## Django Rest Framework
 - [Rest Framework](http://raccoonyy.github.io/django-rest-framework-tutorial-by-devissue/)
+
+
+## Python Text to Speech
+- [google Text to Speech](https://wikidocs.net/15213)

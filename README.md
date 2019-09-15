@@ -18,3 +18,6 @@
 
 ## Python Text to Speech
 - [google Text to Speech](https://wikidocs.net/15213)
+
+## Deep Learning to predict stock price
+- [latest advances](https://towardsdatascience.com/aifortrading-2edd6fac689d)

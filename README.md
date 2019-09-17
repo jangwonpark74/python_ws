@@ -4,6 +4,9 @@
 - [learning python](https://docs.python-guide.org/intro/learning/)
 - [100 Essential Python Interview](https://www.techbeamers.com/python-interview-questions-programmers/)
 
+## Python Memory Management
+ - [Efficient Memory Managment in python](https://towardsdatascience.com/memory-management-in-python-6bea0c8aecc9)
+
 ## Test Driven Python Development
 - [Test Driven Development: what it is, and what it is not](https://medium.freecodecamp.org/test-driven-development-what-it-is-and-what-it-is-not-41fa6bca02a2)
 

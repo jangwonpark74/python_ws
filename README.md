@@ -22,5 +22,8 @@
 ## Python Text to Speech
 - [google Text to Speech](https://wikidocs.net/15213)
 
+## Python Voice Assistant
+- [Python Voice Assistant Explaination](https://towardsdatascience.com/build-your-first-voice-assistant-85a5a49f6cc1)
+
 ## Deep Learning to predict stock price
 - [latest advances](https://towardsdatascience.com/aifortrading-2edd6fac689d)

@@ -11,3 +11,10 @@ print(person_dict)
 #Convert Dictionary to JSON object
 person_json = json.dumps(person_dict)
 print(person_json)
+
+#Create staff dictionary 
+staff_dict = {}
+staff_dict ['Program Manager'] = person_dict
+staff_json = json.dumps(staff_dict)
+
+print(staff_json)

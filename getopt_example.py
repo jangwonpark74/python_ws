@@ -3,6 +3,7 @@ import sys
 
 def main():
     try:
+        # getopt.getopt(args, options[, long_options]) 
         opts, args = getopt.getopt(sys.argv[1:], "ho:v", ["help", "output="])
     except getopt.GetoptError as err:
         print(err)

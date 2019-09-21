@@ -4,6 +4,10 @@
 - [learning python](https://docs.python-guide.org/intro/learning/)
 - [100 Essential Python Interview](https://www.techbeamers.com/python-interview-questions-programmers/)
 
+
+## Microsoft C9 Python Tutorial
+- [Beginner's guide to python](https://github.com/microsoft/c9-python-getting-started)
+
 ## Python Memory Management
  - [Efficient Memory Managment in python](https://towardsdatascience.com/memory-management-in-python-6bea0c8aecc9)
 

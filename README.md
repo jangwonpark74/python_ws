@@ -6,6 +6,7 @@
 
 
 ## Microsoft C9 Python Tutorial
+- [Programming with Python](https://channel9.msdn.com/Series/Intro-to-Python-Development?WT.mc_id=python-c9-niner)
 - [Beginner's guide to python](https://github.com/microsoft/c9-python-getting-started)
 
 ## Python Memory Management

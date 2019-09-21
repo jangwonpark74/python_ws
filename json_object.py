@@ -18,3 +18,12 @@ staff_dict ['Program Manager'] = person_dict
 staff_json = json.dumps(staff_dict)
 
 print(staff_json)
+
+# List object of dictionaries
+
+languages_list = ['CSharp', 'Python', 'JavaScript']
+person_dict['languages'] = languages_list
+
+#Convert dictionary to JSON object
+person_json = json.dumps(person_dict)
+print(person_json)

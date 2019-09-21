@@ -2,6 +2,9 @@ import socket
 import threading
 
 '''
+
+https://www.howtogeek.com/225487/what-is-the-difference-between-127.0.0.1-and-0.0.0.0/
+
 What is the Difference Between 127.0.0.1 and 0.0.0.0?
 127.0.0.1 is the loopback address (also known as localhost).
 0.0.0.0 is a non-routable meta-address used to designate 

@@ -1,3 +1,10 @@
+'''
+
+https://bab2min.tistory.com/474?category=166835
+
+'''
+
+
 # -*- coding: utf-8 -*-
 import urllib.request
 import urllib.parse

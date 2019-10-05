@@ -19,7 +19,7 @@
 
 ## Python requests 
 - [URL requests module](https://brownbears.tistory.com/198)
-
+- [requests simple usage](https://hongku.tistory.com/292)
 ## Django Install & API Server 설치 법
 - [Rest API server](http://throughkim.kr/2018/05/29/django-rest/)
 

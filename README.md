@@ -24,6 +24,9 @@
 ## Yahoo Finance Data
 - [yfinance](https://aroussi.com/post/python-yahoo-finance)
 
+## Datacamp Algorithmic Trading
+- [Tutorial](https://www.datacamp.com/community/tutorials/finance-python-trading)
+
 ## Django Install & API Server 설치 법
 - [Rest API server](http://throughkim.kr/2018/05/29/django-rest/)
 

@@ -17,6 +17,9 @@
 
 - [10 Steps to Set Up Your Python Project for Success](https://towardsdatascience.com/10-steps-to-set-up-your-python-project-for-success-14ff88b5d13)
 
+## Python requests 
+- [URL requests module](https://brownbears.tistory.com/198)
+
 ## Django Install & API Server 설치 법
 - [Rest API server](http://throughkim.kr/2018/05/29/django-rest/)
 

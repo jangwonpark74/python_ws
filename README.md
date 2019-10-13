@@ -11,6 +11,7 @@
 ## Python Tips
 - [Python snippets](https://medium.com/better-programming/20-python-snippets-you-should-learn-today-8328e26ff124)
 - [Tips for data analysis in python](https://towardsdatascience.com/7-things-to-quickly-improve-your-data-analysis-in-python-3d434243da7)
+- [3 pythonic function](https://towardsdatascience.com/3-advanced-python-functions-for-data-scientists-f869016da63a)
 
 ## Python Memory Management
  - [Efficient Memory Managment in python](https://towardsdatascience.com/memory-management-in-python-6bea0c8aecc9)

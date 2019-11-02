@@ -12,6 +12,7 @@
 - [Python snippets](https://medium.com/better-programming/20-python-snippets-you-should-learn-today-8328e26ff124)
 - [Tips for data analysis in python](https://towardsdatascience.com/7-things-to-quickly-improve-your-data-analysis-in-python-3d434243da7)
 - [3 pythonic function](https://towardsdatascience.com/3-advanced-python-functions-for-data-scientists-f869016da63a)
+- [5 list operations](https://medium.com/better-programming/five-ways-to-add-data-to-a-list-in-python-ed1e7866e122)
 - [Iterator, Generator](https://towardsdatascience.com/python-pro-tip-use-itertools-generators-and-generator-expressions-1b84911c978)
 - [byte sized python recipes](https://towardsdatascience.com/bite-sized-python-recipes-52cde45f1489)
 

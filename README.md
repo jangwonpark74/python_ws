@@ -13,6 +13,7 @@
 - [Tips for data analysis in python](https://towardsdatascience.com/7-things-to-quickly-improve-your-data-analysis-in-python-3d434243da7)
 - [3 pythonic function](https://towardsdatascience.com/3-advanced-python-functions-for-data-scientists-f869016da63a)
 - [Iterator, Generator](https://towardsdatascience.com/python-pro-tip-use-itertools-generators-and-generator-expressions-1b84911c978)
+- [byte sized python recipes](https://towardsdatascience.com/bite-sized-python-recipes-52cde45f1489)
 
 ## Python Memory Management
  - [Efficient Memory Managment in python](https://towardsdatascience.com/memory-management-in-python-6bea0c8aecc9)

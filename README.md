@@ -40,6 +40,8 @@
 ## Django Rest Framework
 - [Rest Framework](http://raccoonyy.github.io/django-rest-framework-tutorial-by-devissue/)
 
+## Python Chatbot
+- [Chatbot Python](https://data-flair.training/blogs/python-chatbot-project/)
 
 ## Python Text to Speech
 - [google Text to Speech](https://wikidocs.net/15213)

@@ -8,6 +8,10 @@
 - [Programming with Python](https://channel9.msdn.com/Series/Intro-to-Python-Development?WT.mc_id=python-c9-niner)
 - [Beginner's guide to python](https://github.com/microsoft/c9-python-getting-started)
 
+## Python Design Pattern
+- [ Brandon Rhodes ](https://python-patterns.guide/)
+
+
 ## Python Tips
 - [Python snippets](https://medium.com/better-programming/20-python-snippets-you-should-learn-today-8328e26ff124)
 - [Tips for data analysis in python](https://towardsdatascience.com/7-things-to-quickly-improve-your-data-analysis-in-python-3d434243da7)

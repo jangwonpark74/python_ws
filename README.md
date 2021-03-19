@@ -19,6 +19,7 @@
 - [5 list operations](https://medium.com/better-programming/five-ways-to-add-data-to-a-list-in-python-ed1e7866e122)
 - [Iterator, Generator](https://towardsdatascience.com/python-pro-tip-use-itertools-generators-and-generator-expressions-1b84911c978)
 - [byte sized python recipes](https://towardsdatascience.com/bite-sized-python-recipes-52cde45f1489)
+- [python indexing and slicing)[https://railsware.com/blog/python-for-machine-learning-indexing-and-slicing-for-lists-tuples-strings-and-other-sequential-types/)
 
 ## Python Memory Management
  - [Efficient Memory Managment in python](https://towardsdatascience.com/memory-management-in-python-6bea0c8aecc9)

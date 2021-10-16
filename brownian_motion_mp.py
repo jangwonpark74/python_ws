@@ -1,10 +1,10 @@
-import multiprocessing as mp 
+import multiprocessing as mp
 import numpy as np
 import math
 
 def simulate_geometric_brownian_motion(p):
     M, I = p
-    
+ 
     #time steps, paths
     S0 = 100; r =0.05 ; sigma = 0.2; T = 1.0
 

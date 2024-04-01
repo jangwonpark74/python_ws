@@ -1,165 +1,178 @@
-import time
 import os
+import time
 import sys
-import ccxt
-import pandas as pd
-import numpy as np
 import schedule
-from schedule import every, repeat
-import datetime
+import ccxt
+import talib
+import pandas as pd
 
 from conf import key
+from pprint import pprint
+from datetime import datetime
+from dataclasses import dataclass
 
-n = 14  # RSI period
-symbol = "DOGE/KRW"
+buy_order = False
+sell_order = False
+avg_buy_price = 0.0
+account_money = 0.0
+profit_factor = 1.12
+btc_sell_amount = 0.02
+iterations =0
 
 def init_upbit():
-    print('CCXT Version:', ccxt.__version__)
-
+    print('\n-----------------Upbit Exchange Initialization-------------------------')
+    print('Initialized CCXT with version : ', ccxt.__version__)
     exchange = ccxt.upbit(config={
             'apiKey':key['accessKey'],
             'secret':key['secret'],
-            'enableRateLimit': True
+            'timeout':15000,
+            'enableRateLimit': True,
         }
     )
-
     return exchange
 
-def get_doge_price(exchange):
-    doge_infos = exchange.fetch_ticker(symbol)
-    doge_price = doge_infos["close"]
-    print(f'current doge_price = {doge_price}')
+def reset_sell_buy_order():
+    global sell_order
+    global buy_order
+    sell_order = False
+    buy_order = False
 
-def get_doge_ohlcv(exchange, duration):
-    doge_ohlcv = exchange.fetch_ohlcv(symbol=symbol, timeframe=duration)
-    return doge_ohlcv
+def analyze_signals(exchange, currency)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol=currency.symbol, timeframe='15m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        pd_ts= pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        pd_ts = pd_ts.dt.tz_convert("Asia/Seoul")  # convert timezone
+        pd_ts = pd_ts.dt.tz_localize(None)
+        df.set_index(pd_ts, inplace=True)
+        # Calculate RSI
 
-def get_dataframe(ohlcv):
-    df = pd.DataFrame(ohlcv, columns =['datetime', 'open', 'high', 'low', 'close', 'volume'])
-    pd_ts = pd.to_datetime(df['datetime'], utc=True, unit='ms')     # unix timestamp to pandas Timeestamp
-    pd_ts = pd_ts.dt.tz_convert("Asia/Seoul")                       # convert timezone
-    pd_ts = pd_ts.dt.tz_localize(None)
-    df.set_index(pd_ts, inplace=True)
-    df = df[['open', 'high', 'low', 'close', 'volume']]
-    print(df.tail(120))
+        df['rsi'] = talib.RSI(df['close'])
+        # Calculate Bollinger Bands
+        df['upper_band'], df['middle_band'], df['lower_band'] = talib.BBANDS(df['close'])
+        df['bollinger_sell'] = (df['high'] > df['upper_band']) | (df['open'] > df['upper_band'])
+        df['bollinger_buy'] = (df['low'] < df['lower_band']) | (df['open'] < df['lower_band'])
+        df['price_judge']  = False
+        df['sell_price']  = avg_buy_price * profit_factor
+        df['price_judge'] = (df['high'] > df['sell_price'])
 
-def df_seoul(ohlcv):
-    df = pd.DataFrame(ohlcv, columns =['datetime', 'open', 'high', 'low', 'close', 'volume'])
-    pd_ts = pd.to_datetime(df['datetime'], utc=True, unit='ms')     # unix timestamp to pandas Timeestamp
-    pd_ts = pd_ts.dt.tz_convert("Asia/Seoul")                       # convert timezone
-    pd_ts = pd_ts.dt.tz_localize(None)
-    df.set_index(pd_ts, inplace=True)
-    return df
+        global sell_order
+        sell_order = df['bollinger_sell'].iloc[-1] & df['price_judge'].iloc[-1]
 
-def calculate_bollinger_with_rsi(df):
-    df = df[['open', 'high', 'low', 'close', 'volume', 'rsi']]
-    df['middle'] = df['close'].rolling(window=20).mean()
-    std = df['close'].rolling(20).std(ddof=0)
-    df['upper'] = df['middle'] + 2 * std
-    df['upper'] = df['upper'].apply(lambda x: round(x, 1))
-    df['lower'] = df['middle'] - 2 * std
-    df['lower'] = df['lower'].apply(lambda x: round(x, 1))
-    df['middle']= df['middle'].apply(lambda x: round(x, 1))
-    return df
+        global buy_order
+        buy_order = df['bollinger_buy'].iloc[-1]
+        print("\n----------------------- Buy or Sell ------------------------------")
+        print( "sell_order : " , sell_order, "  ", "buy_order : ", buy_order)
 
-def rma(x, n, y0):
-    a = (n-1) / n
-    ak = a**np.arange(len(x)-1, -1, -1)
-    return np.r_[np.full(n, np.nan), y0, np.cumsum(ak * x) / ak / n + y0 * a**np.arange(1, len(x)+1)]
+        print("\n---------------------signal analysis-----------------------------")
+        pprint(df.iloc[-1])
+    except Exception as e:
+        print("Exception : ", str(e))
 
-def RSI(ohlcv):
-    df = df_seoul(ohlcv)
+def get_balance(exchange, currency) -> None:
+    try:
+        balance = exchange.fetch_balance()
+        df = pd.DataFrame.from_dict(balance['info'])
+        df['symbol'] = df['currency'] +'/' + df['unit_currency']
+        df = df.drop(columns=['currency', 'avg_buy_price_modified', 'unit_currency'])
+        df['total_volume'] = pd.to_numeric(df['balance']) + pd.to_numeric(df['locked'])
+        df = df[['symbol', 'balance', 'locked', 'avg_buy_price', 'total_volume']]
+        df = df.rename(columns={'balance': 'free_volume', 'locked': 'ordered_volume', 'avg_buy_price': 'purchase_price'})
+        df['index'] = df.index
+        money_df = df.loc[df['symbol'] == "KRW/KRW"]
+        x = money_df['free_volume'].values
 
-    # RSI calculation logic
-    df['change'] =  df['close'].diff() # 종가 차이 계산
-    df['gain']= df.change.mask(df.change <0, 0.0)
-    df['loss']= -df.change.mask(df.change>0, -0.0)
-    df['avg_gain'] = rma(df.gain[n+1:].to_numpy(), n, np.nansum(df.gain.to_numpy()[:n+1])/n)
+        global account_money
+        account_money = float(x[0])
 
-    df['change'] = df['close'].diff()
-    df['gain'] = df.change.mask(df.change < 0, 0.0)
-    df['loss'] = -df.change.mask(df.change > 0, -0.0)
-    df['avg_gain'] = rma(df.gain[n+1:].to_numpy(), n, np.nansum(df.gain.to_numpy()[:n+1])/n)
-    df['avg_loss'] = rma(df.loss[n+1:].to_numpy(), n, np.nansum(df.loss.to_numpy()[:n+1])/n)
-    df['rs'] = df.avg_gain / df.avg_loss
-    df['rsi'] = 100 - (100 / (1 + df.rs))
-    df['rsi'] = df['rsi'].apply(lambda x: round(x, 1))
-    df = df[['datetime', 'open', 'high', 'low', 'close', 'volume', 'rsi']]
-    return df
+        global avg_buy_price
+        symbol_df = df.loc[df['symbol'] == currency.symbol]
+        y = symbol_df['purchase_price'].iloc[-1]
+        avg_buy_price = float(y)
 
-def bollinger_rsi(ohlcv):
-    df = RSI(ohlcv)
-    df = calculate_bollinger_with_rsi(df)
-    return df
+        print("\n------------------- My Balance --------------------------------")
+        pprint(df)
+        
+  except Exception as e:
+        print("Exception : ", str(e))
 
-def sell_ohlcv(ohlcv_rs):
-    df = ohlcv_rs
-    condition1 = df['rsi'] > 70
-    condition2 = df['close'] > df['upper']
-    df_sell= df.loc[condition1 & condition2]
-    return df_sell
+def get_order_book(exchange, currency):
+    try:
+        orderbook = exchange.fetch_order_book(symbol=currency.symbol)
+        print("\n-------------Get order book of {} before BUY -----------", currency.symbol)
+        pprint(orderbook)
+    except Exception as e:
+        print("Exception : ", str(e))
 
-def buy_ohlcv(ohlcv_rs):
-    df = ohlcv_rs
-    condition3 = df['rsi'] < 30
-    condition4 = df['close'] < df['lower']
-    df_buy = df.loc[condition3 & condition4]
-    return df_buy
+def sell_coin(exchange, currency):
+    try:
+        print("\n-------------market sell order -----------")
+        print("Sell ", currency.symbol)
+        get_balance(exchange, currency)
+        resp =exchange.create_market_sell_order(symbol=currency.symbol, amount = currency.one_minute_sell_amount)
+        pprint(resp)
+    except Exception as e:
+        print("Exception : ", str(e))
 
-def fetch_balance(exchange):
-    balance = exchange.fetch_balance()
-    info = balance['info']
-    df = pd.DataFrame.from_dict(info)
 
-    df['symbol'] = df['currency'] +'/' + df['unit_currency']
-    df = df.drop(columns=['currency', 'avg_buy_price_modified', 'unit_currency'])
-    df['total_volume'] = pd.to_numeric(df['balance']) + pd.to_numeric(df['locked'])
-    df = df[['symbol', 'balance', 'locked', 'avg_buy_price', 'total_volume']]
-    df = df.rename(columns={'balance': 'free_volume', 'locked': 'ordered_volume', 'avg_buy_price': 'purchase_price'})
-    df['index'] = df.index
-    df.loc[df['total_volume']>0, 'open'] = True
-    symbol_list = df['symbol'].values.tolist()
-    print(df)
-    return symbol_list, df
+def buy_coin(exchange,currency)->None:
+    try:
+        print("\n------------Make a Buy -----------")
+        get_order_book(exchange, currency)
+        exchange.options['createMarketBuyOrderRequiresPrice']=False
+        resp = exchange.create_market_buy_order(symbol = currency.symbol, amount=currency.one_minute_buy_quota)
+        pprint(resp)
+    except Exception as e:
+        print("Exception : ", str(e))
 
-def market_sell_order(exchange, symbol, amount):
+def execute_order(exchange, currency)->None:
+    global sell_order
+    global buy_order
+    global iterations
 
-    print("--------------market sell order -----------")
-    ticker = exchange.fetch_ticker(symbol)
-    price = ticker["close"]
-    print(datetime.datetime.now())
-    print(symbol, " price: ", price, "amount: ", amount, "total: ", (price *amount), "KRW")
-#    resp = exchange.create_market_sell_order( symbol=symbol, amount=amount)
-#    print(resp)
+    if sell_order:
+       sell_coin(exchange, currency)
+    if buy_order:
+       buy_coin(exchange, currency)
 
-def limit_buy_order(exchange, symbol, amount):
-    ticker = exchange.fetch_ticker(symbol)
-    price = ticker["close"]
-    price = round((price * 0.99), 2)
-    print("\n------------limit_buy_order-----------")
-    print("symbol :", symbol)
-    print("price  :", price, " amount: ", amount, "total :", (price * amount), "KRW")
-#    resp = exchange.create_limit_buy_order(symbol = symbol, amount = amount, price = price)
-#    print(resp)
+    iterations += 1
+    if (iterations % 14 == 0):
+       reset_sell_buy_order()
 
+def fill_account_money(exchange, currency):
+    if account_money < currency.refill_amount:
+        try:
+            resp = exchange.create_market_sell_order(symbol = currency.symbol, amount = btc_sell_amount)
+            pprint(resp)
+        except Exception as e:
+            print("Exception : ", str(e))
+
+@dataclass(frozen=True)
+class Currency:
+    symbol:str
+    one_minute_buy_quota:float
+    one_minute_sell_amount:float
+    refill_amount:float
 
 if __name__=='__main__':
     exchange = init_upbit()
-    doge_ohlcv = get_doge_ohlcv(exchange, '15m')
-    doge_ohlcv_br = bollinger_rsi(doge_ohlcv)
 
-    print("--------sell---------")
-    print(sell_ohlcv(doge_ohlcv_br))
+    doge = Currency( symbol="DOGE/KRW",
+                     one_minute_buy_quota = 100000,
+                     one_minute_sell_amount = 1000,
+                     refill_amount = 1500000
+                   )
 
-    print("\n")
-    print("--------buy---------")
-    print(buy_ohlcv(doge_ohlcv_br))
+    btc  = Currency( symbol="BTC/KRW",
+                     one_minute_buy_quota = 1000000,
+                     one_minute_sell_amount = 0.003,
+                     refill_amount=1500000
+                   )
+    schedule.every(15).seconds.do(get_balance, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals, exchange, doge)
+    schedule.every(1).minutes.do(execute_order, exchange, doge)
+    schedule.every(1).minutes.do(fill_account_money, exchange, btc)
 
-    print("\n--------balance---------")
-    fetch_balance(exchange)
-
-    print("\n--------doge price---------")
-    get_doge_price(exchange)
-
-    limit_buy_order(exchange, symbol, 1000)
-    market_sell_order(exchange, symbol, 1000)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

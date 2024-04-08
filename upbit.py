@@ -41,17 +41,17 @@ def analyze_signals(exchange, currency)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol=currency.symbol, timeframe='15m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        pd_ts= pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        pd_ts = pd_ts.dt.tz_convert("Asia/Seoul")  # convert timezone
-        pd_ts = pd_ts.dt.tz_localize(None)
-        df.set_index(pd_ts, inplace=True)
-        # Calculate RSI
-
-        df['rsi'] = talib.RSI(df['close'])
-        # Calculate Bollinger Bands
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        
+       # Calculate Bollinger Bands
         df['upper_band'], df['middle_band'], df['lower_band'] = talib.BBANDS(df['close'])
-        df['bollinger_sell'] = (df['high'] > df['upper_band']) | (df['open'] > df['upper_band'])
-        df['bollinger_buy'] = (df['low'] < df['lower_band']) | (df['open'] < df['lower_band'])
+        df['bollinger_pb'] = (df['close'] - df['lower_band'])/(df['upper_band'] - df['lower_band']) * 100
+        df['bollinger_sell'] = (df['high'] > df['upper_band']) | (df['open'] > df['upper_band']) | \
+                                (df['bollinger_pb'] > 100)
+
+        df['bollinger_buy'] = (df['low'] < df['lower_band']) | (df['open'] < df['lower_band']) | \
+                              (df['bollinger_pb'] < 0)
         df['price_judge']  = False
         df['sell_price']  = avg_buy_price * profit_factor
         df['price_judge'] = (df['high'] > df['sell_price'])
@@ -136,7 +136,7 @@ def execute_order(exchange, currency)->None:
        buy_coin(exchange, currency)
 
     iterations += 1
-    if (iterations % 14 == 0):
+    if (iterations % 15 == 0):
        reset_sell_buy_order()
 
 def fill_account_money(exchange, currency):
@@ -158,8 +158,8 @@ if __name__=='__main__':
     exchange = init_upbit()
 
     doge = Currency( symbol="DOGE/KRW",
-                     one_minute_buy_quota = 100000,
-                     one_minute_sell_amount = 1000,
+                     one_minute_buy_quota = 80000,
+                     one_minute_sell_amount = 350,
                      refill_amount = 1500000
                    )
 

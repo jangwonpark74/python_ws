@@ -15,8 +15,11 @@ from collections import defaultdict
 buy_order = defaultdict(bool)
 sell_order = defaultdict(bool)
 
-# One minute MFI check 
+# 3 minute MFI check 
 check_mfi = defaultdict(float)
+
+# 3 minute RSI check
+check_rsi_3m = defaultdict(float)
 
 # Bollinger band criteria 4h minutes
 buy_order_4h = defaultdict(bool)
@@ -25,7 +28,6 @@ sell_order_4h = defaultdict(bool)
 # mfi scalping 1 minute
 scalping_buy_order = defaultdict(bool)
 scalping_sell_order= defaultdict(bool)
-
 
 # Pullback Buy
 pullback_buy_order = defaultdict(bool)
@@ -38,6 +40,9 @@ iterations = defaultdict(int)
 iterations_4h = defaultdict(int)
 
 mfi = defaultdict(float)
+
+# Free balance
+free_balance = defaultdict(float)
 
 # One minute buy or sell amount
 one_minute_amount = 700000
@@ -87,13 +92,17 @@ def analyze_signals_3m(exchange, currency)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['volume'] = round(df['volume'], 1)
         df['mfi'] = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
-
         df['typical'] = round (( df['high'] + df['low'] + df['close'] ) / 3.0, 1)
+        df['rsi'] = round( talib.RSI(df['close'], timeperiod=14), 1)
 
 
         # Scalping based on 3 minute MFI change
         global check_mfi
         check_mfi[symbol] = df['mfi'].iloc[-1]
+
+        global check_rsi_3m
+        check_rsi_3m[symbol] = df['rsi'].iloc[-1]
+
 
         global scalping_buy_order 
         global scalping_sell_order 
@@ -107,6 +116,9 @@ def analyze_signals_3m(exchange, currency)->None:
             scalping_buy_order[symbol] = True
         else:
             scalping_buy_order[symbol] = False
+
+        if check_rsi_3m[symbol] < 30:
+            scalping_buy_order[symbol] = scalping_buy_order[symbol] | True
 
         df['scaling_buy'] = scalping_sell_order[symbol]
         df['scaling_sell'] = scalping_buy_order[symbol]
@@ -480,6 +492,19 @@ def monitor_buy_sell_order(x : list[Currency]):
         orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], pullback_buy_order[s], scalping_buy_order[s],scalping_sell_order[s]]
     pprint(orders)
 
+def fetch_balance(exchange, x: list[Currency]):
+
+    try:
+        free_DOGE = exchange.fetch_balance()['DOGE']['free']
+
+        print("\n--------------- free balance  -------------------------")
+        print(f"Free Doge ={free_DOGE}")
+    
+    except Exception as e:
+        print("Exception : ", str(e))
+
+
+
 if __name__=='__main__':
 
     exchange = init_upbit()
@@ -531,6 +556,7 @@ if __name__=='__main__':
     schedule.every(15).minutes.do(execute_order_4h, exchange, sol)
     """
     schedule.every(30).seconds.do(monitor_buy_sell_order, currencies)
+    schedule.every(30).seconds.do(fetch_balance, exchange, currencies)
 
     while True:
         schedule.run_pending()

@@ -43,7 +43,7 @@ mfi = defaultdict(float)
 one_minute_amount = 700000
 
 # MFI based scalping 
-scalping_amount = 200000
+scalping_amount = 1000000
 
 
 def init_upbit():
@@ -78,10 +78,10 @@ def calc_volatility(x: float) -> float:
         vlolatility = 0  
     return volatility
 
-def analyze_signals_5m(exchange, currency)->None:
+def analyze_signals_3m(exchange, currency)->None:
     try:
         symbol = currency.symbol
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -103,7 +103,7 @@ def analyze_signals_5m(exchange, currency)->None:
         else:
             scalping_sell_order[symbol] = False
 
-        if check_mfi[symbol] <= 25 :
+        if check_mfi[symbol] < 20 :
             scalping_buy_order[symbol] = True
         else:
             scalping_buy_order[symbol] = False
@@ -324,7 +324,7 @@ def sell_coin(exchange, currency):
 
         if check_mfi[symbol] < 35 :
             print(f'{symbol} Cancel sell for low one minute mfi = {check_mfi[symbol]}')  
-        return
+            return
 
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} average price : {avg_price}, sell amount = {sell_amount}')  
@@ -342,11 +342,11 @@ def scalping_sell_coin(exchange, currency):
 
         avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
 
-        sell_amount = round((one_minute_amount)/ avg_price, 5)
+        scalping_sell_amount = round((scalping_amount)/ avg_price, 3)
 
         print("\n------------ Make a scalping sell order-----------")
-        print(f'{symbol} average price : {avg_price}, sell amount = {sell_amount}')  
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = scalping_amount )
+        print(f'{symbol} average price : {avg_price}, scalping sell amount = {scalping_sell_amount}')  
+        resp =exchange.create_market_sell_order(symbol=symbol, amount = scalping_sell_amount )
         pprint(resp)
     except Exception as e:
         print("Exception : ", str(e))
@@ -494,14 +494,14 @@ if __name__=='__main__':
     #currencies = [doge, btc, xrp, eth, sol]
     currencies = [doge, xrp]
     
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, doge)
     schedule.every(15).minutes.do(execute_order_4h, exchange, doge)
     
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
@@ -509,21 +509,21 @@ if __name__=='__main__':
     schedule.every(15).minutes.do(execute_order_4h, exchange, xrp)
 
     """
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, btc)
     schedule.every(15).minutes.do(execute_order_4h, exchange, btc)
 
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
     schedule.every(1).minutes.do(execute_order, exchange, eth)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, eth)
     schedule.every(15).minutes.do(execute_order_4h, exchange, eth)
     
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(1).minutes.do(execute_order, exchange, sol)

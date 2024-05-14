@@ -15,12 +15,7 @@ from collections import defaultdict
 buy_order = defaultdict(bool)
 sell_order = defaultdict(bool)
 
-# 3 minute MFI check 
-check_mfi = defaultdict(float)
-
 # 3 minute RSI check
-check_rsi_3m = defaultdict(float)
-
 # mfi scalping 3 minute
 scalping_buy_order = defaultdict(bool)
 scalping_sell_order= defaultdict(bool)
@@ -45,6 +40,11 @@ one_minute_amount = 700000
 
 # MFI and RSI based scalping 
 scalping_amount = 5000000
+
+#define for Currency dataclass
+@dataclass(frozen=True)
+class Currency:
+    symbol:str
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -73,9 +73,7 @@ def reset_sell_buy_order_4h(symbol):
     buy_order_4h[symbol] = False
 
 def calc_volatility(x: float) -> float:
-    volatility = round(-0.0012 * x * x + 0.12 * x, 2)
-    if volatility < 0:
-        vlolatility = 0  
+    volatility = round(-0.0012 * x * x + 0.12 * x + 0.5, 2)
     return volatility
 
 def analyze_signals_3m(exchange, currency)->None:
@@ -92,27 +90,14 @@ def analyze_signals_3m(exchange, currency)->None:
 
 
         # Scalping based on 3 minute MFI change
-        global check_mfi
-        check_mfi[symbol] = df['mfi'].iloc[-1]
-
-        global check_rsi_3m
-        check_rsi_3m[symbol] = df['rsi'].iloc[-1]
+        mfi_3m = df['mfi'].iloc[-1]
+        rsi_3m = df['rsi'].iloc[-1]
 
         global scalping_buy_order 
         global scalping_sell_order 
-
-        if check_mfi[symbol] > 80 :
-            scalping_sell_order[symbol] = True
-        else:
-            scalping_sell_order[symbol] = False
-
-        if check_mfi[symbol] < 20 :
-            scalping_buy_order[symbol] = True
-        else:
-            scalping_buy_order[symbol] = False
-
-        if check_rsi_3m[symbol] < 30:
-            scalping_buy_order[symbol] = scalping_buy_order[symbol] | True
+        scalping_sell_order[symbol] = ( mfi_3m > 80 ) 
+        scalping_buy_order[symbol]  = ( mfi_3m < 20 ) 
+        scalping_buy_order[symbol]  = scalping_buy_order[symbol] | ( rsi_3m < 30 ) 
 
         df['scaling_buy'] = scalping_sell_order[symbol]
         df['scaling_sell'] = scalping_buy_order[symbol]
@@ -143,7 +128,6 @@ def analyze_signals_3m(exchange, currency)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-
 def analyze_signals_15m(exchange, currency)->None:
     try:
         symbol = currency.symbol
@@ -167,17 +151,11 @@ def analyze_signals_15m(exchange, currency)->None:
         df['bollinger_width'] = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
         bb_width = df['bollinger_width'].iloc[-1]
 
-        volatility_check = False
-        if bb_width >= calc_volatility(mfi) :
-            volatility_check = True
-        else:
-            volatility_check = False
-
         global sell_order
         global buy_order
 
-        bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and volatility_check 
-        bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and volatility_check 
+        bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
+        bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
 
         sell_order[symbol] = bollinger_sell
         buy_order[symbol] = bollinger_buy 
@@ -260,10 +238,6 @@ def sell_coin(exchange, currency):
 
         sell_amount = round((one_minute_amount)/ avg_price, 5)
 
-        if check_mfi[symbol] < 35 :
-            print(f'{symbol} Cancel sell for low one minute mfi = {check_mfi[symbol]}')  
-            return
-
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} average price : {avg_price}, sell amount = {sell_amount}')  
         resp =exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
@@ -299,10 +273,6 @@ def buy_coin(exchange,currency)->None:
 
         avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         free_KRW = exchange.fetchBalance()['KRW']['free']
-
-        if check_mfi[symbol] > 75 :
-            print(f'{symbol} Cancel buy for high one minute mfi = {check_mfi[symbol]}')  
-            return
 
         buy_amount = 0
         if free_KRW > (one_minute_amount ):
@@ -350,7 +320,6 @@ def scalping_buy_coin(exchange,currency)->None:
         print("Exception : ", str(e))
 
 def execute_order(exchange, currency)->None:
-    global iterations
 
     symbol = currency.symbol
 
@@ -367,13 +336,13 @@ def execute_order(exchange, currency)->None:
     if buy:
        buy_coin(exchange, currency)
 
+    global iterations
     iterations[symbol] = iterations[symbol] + 1
     if (iterations[symbol] % 12== 0):
        reset_sell_buy_order(symbol)
 
 def execute_scalping_order(exchange, currency)->None:
-    global iterations
-
+    
     symbol = currency.symbol
 
     # mfi based 1 minute sell/buy decision 
@@ -384,10 +353,6 @@ def execute_scalping_order(exchange, currency)->None:
        scalping_buy_coin(exchange, currency)
     elif sell:
        scalping_sell_coin(exchange, currency)
-
-@dataclass(frozen=True)
-class Currency:
-    symbol:str
 
 def monitor_buy_sell_order(x : list[Currency]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -410,8 +375,6 @@ def fetch_balance(exchange, x: list[Currency]):
     
     except Exception as e:
         print("Exception : ", str(e))
-
-
 
 if __name__=='__main__':
 

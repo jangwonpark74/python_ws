@@ -11,20 +11,13 @@ from dataclasses import dataclass
 
 from collections import defaultdict
 
-# Bollinger band criteria 15 minutes
+# Bollinger band buy/sell order 
 buy_order = defaultdict(bool)
 sell_order = defaultdict(bool)
 
-# 3 minute RSI check
-# mfi scalping 3 minute
-scalping_buy_order = defaultdict(bool)
-scalping_sell_order= defaultdict(bool)
-
-# Pullback Buy
-pullback_buy_order = defaultdict(bool)
-pullback_high = defaultdict(float)
-price = defaultdict(float)
-pullback_buy_price = defaultdict(float)
+# MFI scalping 3 minute
+scalping_buy = defaultdict(bool)
+scalping_sell= defaultdict(bool)
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
@@ -61,10 +54,8 @@ def init_upbit():
 def reset_sell_buy_order(symbol):
     global sell_order
     global buy_order
-    global pullback_buy_order 
     sell_order[symbol] = False
     buy_order[symbol] = False
-    pullback_buy_order[symbol] = False
 
 def reset_sell_buy_order_4h(symbol):
     global sell_order_4h
@@ -93,37 +84,14 @@ def analyze_signals_3m(exchange, currency)->None:
         mfi_3m = df['mfi'].iloc[-1]
         rsi_3m = df['rsi'].iloc[-1]
 
-        global scalping_buy_order 
-        global scalping_sell_order 
-        scalping_sell_order[symbol] = ( mfi_3m > 80 ) 
-        scalping_buy_order[symbol]  = ( mfi_3m < 20 ) 
-        scalping_buy_order[symbol]  = scalping_buy_order[symbol] | ( rsi_3m < 30 ) 
+        global scalping_buy 
+        global scalping_sell 
+        scalping_sell[symbol] = ( mfi_3m > 80 ) 
+        scalping_buy[symbol]  = ( mfi_3m < 20 ) 
+        scalping_buy[symbol]  = scalping_buy_order[symbol] | ( rsi_3m < 30 ) 
 
-        df['scaling_buy'] = scalping_sell_order[symbol]
-        df['scaling_sell'] = scalping_buy_order[symbol]
-
-        # Find high within 6 hour   
-        df['pullback_high'] = round (df['typical'].rolling(window = 120).max(), 1)
-
-        global pullback_high
-        global price
-        pullback_high[symbol] = df['pullback_high'].iloc[-1]
-        price[symbol] = df['typical'].iloc[-1]
-
-        # pullback signal  
-        pullback_threshold = 0.04
-        df['pullback_price_check'] = df['close'] < ((1 - pullback_threshold) * df['pullback_high'])
-        df['pullback_mfi_check'] = df['mfi'] < 30 
-
-        pullback_buy = df['pullback_price_check'].iloc[-1] and df['pullback_mfi_check'].iloc[-1]
-        df['pullback_buy'] = pullback_buy
-        
-        print(f'\n----------- {symbol} pullback analysis with mfi (3 minute) --------------')
-        pprint(df.iloc[-1])
-
-        global pullback_buy_order
-        pullback_buy_order[symbol] = False
-        pullback_buy_order[symbol] = pullback_buy_order[symbol] | pullback_buy 
+        df['scaling_buy'] = scalping_sell[symbol]
+        df['scaling_sell'] = scalping_buy[symbol]
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -234,13 +202,12 @@ def sell_coin(exchange, currency):
         print("\n------------Getting order book -----------")
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-
+        avg_price   = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         sell_amount = round((one_minute_amount)/ avg_price, 5)
 
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} average price : {avg_price}, sell amount = {sell_amount}')  
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
+        resp = exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
         pprint(resp)
     except Exception as e:
         print("Exception : ", str(e))
@@ -256,13 +223,13 @@ def scalping_sell_coin(exchange, currency):
 
         scalping_sell_amount = round((scalping_amount)/ avg_price, 3)
 
-        print("\n------------ Make a scalping sell order-----------")
+        print("\n------------ Execute scalping sell -----------")
         print(f'{symbol} average price : {avg_price}, scalping sell amount = {scalping_sell_amount}')  
         resp =exchange.create_market_sell_order(symbol=symbol, amount = scalping_sell_amount )
         pprint(resp)
+
     except Exception as e:
         print("Exception : ", str(e))
-
 
 def buy_coin(exchange,currency)->None:
     try:
@@ -280,11 +247,6 @@ def buy_coin(exchange,currency)->None:
         else:
             print("------- Cancel buy for low balance ------------")
             return
-
-        global pullback_buy_price
-
-        if pullback_buy_order[symbol] == True:
-            pullback_buy_price[symbol] = avg_price
 
         print("\n------------ Make a buy order -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -311,7 +273,7 @@ def scalping_buy_coin(exchange,currency)->None:
             print("------- Cancel buy for low balance ------------")
             return
 
-        print("\n------------ Make a scalping buy order -----------")
+        print("\n------------ Excute scalping buy -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount=scalping_amount)
         pprint(resp)
@@ -332,49 +294,34 @@ def execute_order(exchange, currency)->None:
     elif sell:
        sell_coin(exchange, currency)
 
-    buy = pullback_buy_order[symbol]
-    if buy:
-       buy_coin(exchange, currency)
-
     global iterations
     iterations[symbol] = iterations[symbol] + 1
     if (iterations[symbol] % 12== 0):
        reset_sell_buy_order(symbol)
 
-def execute_scalping_order(exchange, currency)->None:
+def execute_scalping(exchange, currency)->None:
     
     symbol = currency.symbol
 
     # mfi based 1 minute sell/buy decision 
-    sell   = scalping_sell_order[symbol] 
-    buy    = scalping_buy_order[symbol]
+    sell   = scalping_sell[symbol] 
+    buy    = scalping_buy[symbol]
 
     if buy:
        scalping_buy_coin(exchange, currency)
     elif sell:
        scalping_sell_coin(exchange, currency)
 
-def monitor_buy_sell_order(x : list[Currency]):
+def monitor(x : list[Currency]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol", "Buy", "Sell", "Pullback", "Scalping Buy", "Scalping Sell"]
+    column_name= ["Symbol", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
     orders = pd.DataFrame(columns = column_name)
 
     for y in x:
         s = y.symbol
-        orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], pullback_buy_order[s], scalping_buy_order[s],scalping_sell_order[s]]
+        orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
-
-def fetch_balance(exchange, x: list[Currency]):
-
-    try:
-        free_DOGE = exchange.fetch_balance()['DOGE']['free']
-
-        print("\n--------------- free balance  -------------------------")
-        print(f"Free Doge ={free_DOGE}")
-    
-    except Exception as e:
-        print("Exception : ", str(e))
 
 if __name__=='__main__':
 
@@ -390,11 +337,11 @@ if __name__=='__main__':
     #currencies = [doge, btc, xrp, eth, sol]
     currencies = [doge]
     
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
-    schedule.every(3).minutes.do(execute_scalping_order, exchange, doge)
+    schedule.every(3).minutes.do(execute_scalping, exchange, doge)
     
     """
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
@@ -421,8 +368,7 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, sol)
     """
-    schedule.every(30).seconds.do(monitor_buy_sell_order, currencies)
-    schedule.every(30).seconds.do(fetch_balance, exchange, currencies)
+    schedule.every(30).seconds.do(monitor, currencies)
 
     while True:
         schedule.run_pending()

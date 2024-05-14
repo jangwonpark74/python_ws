@@ -64,30 +64,45 @@ def calc_volatility(x: float) -> float:
     volatility = round(-0.0012 * x * x + 0.12 * x + 0.5, 2)
     return volatility
 
-def analyze_signals_3m(exchange, symbol: str)->None:
+def analyze_signals_1d(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df_1d = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
+        df_1d['bollinger_upper'], df_1d['bollinger_middle'], df_1d['bollinger_lower'] = talib.BBANDS(df_1d['close'])
+        df_1d['mfi']             = round( talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
+
+        df_1d['bollinger_width'] = round(((df_1d['bollinger_upper'] - df_1d['bollinger_lower'])/df_1d['bollinger_middle']) * 100, 1)
+        df_1d['bollinger_upper'] = round(df_1d['bollinger_upper'], 1)
+        df_1d['bollinger_middle']= round(df_1d['bollinger_middle'], 1)
+        df_1d['bollinger_lower'] = round(df_1d['bollinger_lower'], 1)
+
+        print(f'\n----------------------- {symbol} Signal Analysis ( 1 day ) -----------------------------')
+        pprint(df_1d.iloc[-1])
+
+        # daily mfi update 
+        global mfi_1d
+        mfi = round (df_1d['mfi'].iloc[-1], 2)
+        mfi_1d[symbol] = mfi
+ 
+        print(f'\nSymbol: {symbol} MFI(1d, 14) = {mfi_1d[symbol]}')
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def analyze_signals_4h(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['volume']   = round(df['volume'], 1)
-        df['typical']  = round(( df['high'] + df['low'] + df['close'] ) / 3.0, 1)
-        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 1)
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
 
-        # Scalping based on 3 minute MFI and RSI 
-        mfi_3m = df['mfi'].iloc[-1]
-        rsi_3m = df['rsi'].iloc[-1]
+        global mfi_4h
+        mfi_4h[symbol] = df['mfi'].iloc[-1]
 
-        global scalping_sell 
-        scalping_sell[symbol] = ( mfi_3m > 80 ) 
-        df['scalping_sell']    = scalping_sell[symbol]
-        
-        global scalping_buy 
-        scalping_buy[symbol]  = ( mfi_3m < 20 ) | (rsi_3m < 30) 
-        df['scalping_buy']     = scalping_buy[symbol]
-        
-        print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
+        print(f'\n----------- {symbol} MFI analysis (4 hour) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -99,85 +114,64 @@ def analyze_signals_15m(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['volume'] = round(df['volume'], 1)
-
-        print(f'\n----------- {symbol} Bollinger Sell/Buy and Volatiltiy Analysis (15 minutes) --------------')
-        # Calculate Bollinger Bands
+        df['mfi']      = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
         df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = talib.BBANDS(df['close'])
         df['bollinger_upper']  = round(df['bollinger_upper'], 1)
         df['bollinger_middle'] = round(df['bollinger_middle'], 1)
         df['bollinger_lower']  = round(df['bollinger_lower'], 1)
         df['bollinger_width']  = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
-        df['mfi']              = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
 
-        global sell_order
-        global buy_order
-        bb_width = df['bollinger_width'].iloc[-1]
+        # bollinger volatility based sell buy decision with bollinger width threshold
         mfi = mfi_4h[symbol] 
-        bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
-        bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
+        bb_width = df['bollinger_width'].iloc[-1]
+        
+        # sell, buy condition check
+        global sell_order
+        sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
+        sell_order[symbol] = sell
+        df['bollinger_sell'] = sell
 
-        sell_order[symbol] = bollinger_sell
-        buy_order[symbol] = bollinger_buy 
+        global buy_order
+        buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
+        buy_order[symbol] = buy 
+        df['bollinger_buy'] = buy
 
-        df['bollinger_sell'] = bollinger_sell
-        df['bollinger_buy'] = bollinger_buy
-
+        print(f'\n----------- {symbol} Bollinger Sell/Buy and Volatiltiy Analysis (15 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
         print("Exception : ", str(e))
 
-
-def analyze_signals_4h(exchange, symbol: str)->None:
+def analyze_signals_3m(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['volume']   = round(df['volume'], 1)
-        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
+        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 2)
+        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
 
-        global mfi_4h
-        mfi_4h[symbol] = df['mfi'].iloc[-1]
+        # Scalping based on 3 minute MFI and RSI 
+        mfi_3m = df['mfi'].iloc[-1]
+        rsi_3m = df['rsi'].iloc[-1]
 
-        print(f'\n----------- {symbol} MFI analysis (4 hour) --------------')
+        sell = ( mfi_3m > 80 ) 
+        df['scalping_sell'] = sell 
+        
+        global scalping_sell 
+        scalping_sell[symbol] = sell 
 
+        buy  = ( mfi_3m < 20 ) | (rsi_3m < 30) 
+        df['scalping_buy'] = buy 
+        
+        global scalping_buy 
+        scalping_buy[symbol] = buy 
+
+        print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
         print("Exception : ", str(e))
-
-
-def analyze_signals_1d(exchange, symbol: str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
-        df_1d = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
-        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1d['volume']   = round(df_1d['volume'], 1)
-
-        # Calculate Bollinger Bands
-        df_1d['bollinger_upper'], df_1d['bollinger_middle'], df_1d['bollinger_lower'] = talib.BBANDS(df_1d['close'])
-        df_1d['bollinger_width'] = round(((df_1d['bollinger_upper'] - df_1d['bollinger_lower'])/df_1d['bollinger_middle']) * 100, 1)
-        df_1d['bollinger_upper'] = round(df_1d['bollinger_upper'], 1)
-        df_1d['bollinger_middle']= round(df_1d['bollinger_middle'], 1)
-        df_1d['bollinger_lower'] = round(df_1d['bollinger_lower'], 1)
-        df_1d['mfi']             = round( talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
-
-        print(f'\n----------------------- {symbol} Bolligner Band Analysis ( 1 day ) -----------------------------')
-        pprint(df_1d.iloc[-1])
-
-        # daily mfi update 
-        global mfi_1d
-        mfi_now = round (df_1d['mfi'].iloc[-1], 2)
-        mfi_1d[symbol] = mfi_now
- 
-        print(f'\nSymbol: {symbol} mfi = {mfi_1d[symbol]}')
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
 
 def sell_coin(exchange, symbol: str):
     try:
@@ -309,20 +303,22 @@ if __name__=='__main__':
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping, exchange, doge)
     
+    schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
     schedule.every(3).minutes.do(execute_scalping, exchange, xrp)
     
+    schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(3).minutes.do(execute_scalping, exchange, sol)
     '''

@@ -32,7 +32,7 @@ free_balance = defaultdict(float)
 one_minute_amount = 700000
 
 # MFI and RSI based scalping 
-scalping_amount = 5000000
+scalping_amount = 2000000
 
 #define for Currency dataclass
 @dataclass(frozen=True)
@@ -181,13 +181,10 @@ def analyze_signals_1d(exchange, currency)->None:
         print(f'\n----------------------- {symbol} Bolligner Band Analysis ( 1 day ) -----------------------------')
         pprint(df_1d.iloc[-1])
 
-        # mfi crossover strategy
-        mfi_now = round (df_1d['mfi'].iloc[-1], 2)
-
-        # daily mfi
+        # daily mfi update 
         global mfi
+        mfi_now = round (df_1d['mfi'].iloc[-1], 2)
         mfi[symbol] = mfi_now
-
  
         print(f'\nSymbol: {symbol} mfi = {mfi_now}')
 
@@ -198,8 +195,8 @@ def analyze_signals_1d(exchange, currency)->None:
 def sell_coin(exchange, currency):
     try:
         symbol = currency.symbol
-        orderbook = exchange.fetch_order_book(symbol)
         print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
         avg_price   = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
@@ -215,13 +212,13 @@ def sell_coin(exchange, currency):
 def scalping_sell_coin(exchange, currency):
     try:
         symbol = currency.symbol
-        orderbook = exchange.fetch_order_book(symbol)
         print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
         avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
 
-        scalping_sell_amount = round((scalping_amount)/ avg_price, 3)
+        scalping_sell_amount = round((scalping_amount)/avg_price, 3)
 
         print("\n------------ Execute scalping sell -----------")
         print(f'{symbol} average price : {avg_price}, scalping sell amount = {scalping_sell_amount}')  
@@ -234,11 +231,10 @@ def scalping_sell_coin(exchange, currency):
 def buy_coin(exchange,currency)->None:
     try:
         symbol = currency.symbol
-        orderbook = exchange.fetch_order_book(symbol)
         print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         buy_amount = 0
@@ -259,14 +255,12 @@ def buy_coin(exchange,currency)->None:
 def scalping_buy_coin(exchange,currency)->None:
     try:
         symbol = currency.symbol
-        orderbook = exchange.fetch_order_book(symbol)
+
         print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         free_KRW = exchange.fetchBalance()['KRW']['free']
-
-        buy_amount = 0
         if free_KRW > (scalping_amount ):
             buy_amount = (scalping_amount) 
         else:
@@ -300,7 +294,7 @@ def execute_order(exchange, currency)->None:
        reset_sell_buy_order(symbol)
 
 def execute_scalping(exchange, currency)->None:
-    
+
     symbol = currency.symbol
 
     # mfi based 1 minute sell/buy decision 
@@ -334,40 +328,38 @@ if __name__=='__main__':
     eth = Currency( symbol="ETH/KRW")
     sol = Currency( symbol="SOL/KRW")
 
-    #currencies = [doge, btc, xrp, eth, sol]
-    currencies = [doge]
+    currencies = [doge, btc, xrp, eth, sol]
     
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
-    schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping, exchange, doge)
     
-    """
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
-    schedule.every(3).minutes.do(execute_scalping_order, exchange, xrp)
+    schedule.every(3).minutes.do(execute_scalping, exchange, xrp)
 
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, btc)
-    schedule.every(3).minutes.do(execute_scalping_order, exchange, btc)
+    schedule.every(3).minutes.do(execute_scalping, exchange, btc)
 
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
     schedule.every(1).minutes.do(execute_order, exchange, eth)
-    schedule.every(3).minutes.do(execute_scalping_order, exchange, eth)
-    
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
+    schedule.every(3).minutes.do(execute_scalping, exchange, eth)
+
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(1).minutes.do(execute_order, exchange, sol)
-    schedule.every(3).minutes.do(execute_scalping_order, exchange, sol)
-    """
+    schedule.every(3).minutes.do(execute_scalping, exchange, sol)
+
     schedule.every(30).seconds.do(monitor, currencies)
 
     while True:

@@ -24,6 +24,7 @@ iterations = defaultdict(int)
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
+mfi_1d = defaultdict(float)
 
 # Free balance
 free_balance = defaultdict(float)
@@ -75,10 +76,10 @@ def analyze_signals_3m(exchange, currency)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['volume'] = round(df['volume'], 1)
-        df['mfi'] = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
-        df['typical'] = round (( df['high'] + df['low'] + df['close'] ) / 3.0, 1)
-        df['rsi'] = round( talib.RSI(df['close'], timeperiod=14), 1)
+        df['volume']   = round(df['volume'], 1)
+        df['typical']  = round(( df['high'] + df['low'] + df['close'] ) / 3.0, 1)
+        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 1)
+        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
 
         # Scalping based on 3 minute MFI and RSI 
         mfi_3m = df['mfi'].iloc[-1]
@@ -110,16 +111,13 @@ def analyze_signals_15m(exchange, currency)->None:
         df['bollinger_upper']  = round(df['bollinger_upper'], 1)
         df['bollinger_middle'] = round(df['bollinger_middle'], 1)
         df['bollinger_lower']  = round(df['bollinger_lower'], 1)
+        df['bollinger_width']  = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
         df['mfi']              = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
-        
-        # update volatility 
-        mfi = mfi_4h[symbol] 
-        
-        df['bollinger_width'] = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
 
         global sell_order
         global buy_order
         bb_width = df['bollinger_width'].iloc[-1]
+        mfi = mfi_4h[symbol] 
         bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
         bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
 
@@ -142,9 +140,8 @@ def analyze_signals_4h(exchange, currency)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['volume'] = round(df['volume'], 1)
-
-        df['mfi'] = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
+        df['volume']   = round(df['volume'], 1)
+        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
 
         global mfi_4h
         mfi_4h[symbol] = df['mfi'].iloc[-1]
@@ -166,7 +163,7 @@ def analyze_signals_1d(exchange, currency)->None:
         df_1d = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1d['volume'] = round(df_1d['volume'], 1)
+        df_1d['volume']   = round(df_1d['volume'], 1)
 
         # Calculate Bollinger Bands
         df_1d['bollinger_upper'], df_1d['bollinger_middle'], df_1d['bollinger_lower'] = talib.BBANDS(df_1d['close'])
@@ -174,17 +171,17 @@ def analyze_signals_1d(exchange, currency)->None:
         df_1d['bollinger_upper'] = round(df_1d['bollinger_upper'], 1)
         df_1d['bollinger_middle']= round(df_1d['bollinger_middle'], 1)
         df_1d['bollinger_lower'] = round(df_1d['bollinger_lower'], 1)
-        df_1d['mfi']    = round( talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
+        df_1d['mfi']             = round( talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
 
         print(f'\n----------------------- {symbol} Bolligner Band Analysis ( 1 day ) -----------------------------')
         pprint(df_1d.iloc[-1])
 
         # daily mfi update 
-        global mfi
+        global mfi_1d
         mfi_now = round (df_1d['mfi'].iloc[-1], 2)
-        mfi[symbol] = mfi_now
+        mfi_1d[symbol] = mfi_now
  
-        print(f'\nSymbol: {symbol} mfi = {mfi_now}')
+        print(f'\nSymbol: {symbol} mfi = {mfi_1d[symbol]}')
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -323,6 +320,8 @@ if __name__=='__main__':
     #currencies = [doge, btc, xrp, eth, sol]
     currencies = [doge, xrp, sol]
     
+
+    schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)

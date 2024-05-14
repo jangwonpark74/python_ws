@@ -88,7 +88,7 @@ def analyze_signals_3m(exchange, currency)->None:
         global scalping_sell 
         scalping_sell[symbol] = ( mfi_3m > 80 ) 
         scalping_buy[symbol]  = ( mfi_3m < 20 ) 
-        scalping_buy[symbol]  = scalping_buy_order[symbol] | ( rsi_3m < 30 ) 
+        scalping_buy[symbol]  = scalping_buy[symbol] | ( rsi_3m < 30 ) 
 
         df['scaling_buy'] = scalping_sell[symbol]
         df['scaling_sell'] = scalping_buy[symbol]

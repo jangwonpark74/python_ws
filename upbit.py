@@ -34,12 +34,7 @@ one_minute_amount = 700000
 
 # MFI and RSI based scalping 
 scalping_sell_amount = 5000000
-scalping_buy_amount = 1000000
-
-#define for Currency dataclass
-@dataclass(frozen=True)
-class Currency:
-    symbol:str
+scalping_buy_amount = 1500000
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -69,9 +64,8 @@ def calc_volatility(x: float) -> float:
     volatility = round(-0.0012 * x * x + 0.12 * x + 0.5, 2)
     return volatility
 
-def analyze_signals_3m(exchange, currency)->None:
+def analyze_signals_3m(exchange, symbol: str)->None:
     try:
-        symbol = currency.symbol
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
@@ -85,20 +79,22 @@ def analyze_signals_3m(exchange, currency)->None:
         mfi_3m = df['mfi'].iloc[-1]
         rsi_3m = df['rsi'].iloc[-1]
 
-        global scalping_buy 
         global scalping_sell 
         scalping_sell[symbol] = ( mfi_3m > 80 ) 
+        df['scalping_sell']    = scalping_sell[symbol]
+        
+        global scalping_buy 
         scalping_buy[symbol]  = ( mfi_3m < 20 ) | (rsi_3m < 30) 
-
-        df['scaling_buy'] = scalping_sell[symbol]
-        df['scaling_sell'] = scalping_buy[symbol]
+        df['scalping_buy']     = scalping_buy[symbol]
+        
+        print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
+        pprint(df.iloc[-1])
 
     except Exception as e:
         print("Exception : ", str(e))
 
-def analyze_signals_15m(exchange, currency)->None:
+def analyze_signals_15m(exchange, symbol: str)->None:
     try:
-        symbol = currency.symbol
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
@@ -133,9 +129,8 @@ def analyze_signals_15m(exchange, currency)->None:
         print("Exception : ", str(e))
 
 
-def analyze_signals_4h(exchange, currency)->None:
+def analyze_signals_4h(exchange, symbol: str)->None:
     try:
-        symbol = currency.symbol
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
@@ -154,11 +149,8 @@ def analyze_signals_4h(exchange, currency)->None:
         print("Exception : ", str(e))
 
 
-def analyze_signals_1d(exchange, currency)->None:
+def analyze_signals_1d(exchange, symbol: str)->None:
     try:
-        symbol = currency.symbol
-
-        # 1 day bollinger analysis 
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
         df_1d = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
@@ -266,11 +258,8 @@ def scalping_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def execute_order(exchange, currency)->None:
+def execute_order(exchange, symbol: str)->None:
 
-    symbol = currency.symbol
-
-    # 15m analysis & buy/sell decision handling
     sell   = sell_order[symbol]
     buy    = buy_order[symbol]
 
@@ -284,9 +273,8 @@ def execute_order(exchange, currency)->None:
     if (iterations[symbol] % 12== 0):
        reset_sell_buy_order(symbol)
 
-def execute_scalping(exchange, currency)->None:
+def execute_scalping(exchange, symbol: str)->None:
 
-    symbol = currency.symbol
     sell   = scalping_sell[symbol] 
     buy    = scalping_buy[symbol]
 
@@ -295,14 +283,13 @@ def execute_scalping(exchange, currency)->None:
     elif sell:
        scalping_sell_coin(exchange, symbol)
 
-def monitor(x : list[Currency]):
+def monitor(x : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
     column_name= ["Symbol", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
     orders = pd.DataFrame(columns = column_name)
 
-    for y in x:
-        s = y.symbol
+    for s in x:
         orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
 
@@ -311,15 +298,14 @@ if __name__=='__main__':
     exchange = init_upbit()
 
     # Define currency
-    doge = Currency( symbol="DOGE/KRW")
-    btc = Currency( symbol="BTC/KRW")
-    xrp = Currency( symbol="XRP/KRW")
-    eth = Currency( symbol="ETH/KRW")
-    sol = Currency( symbol="SOL/KRW")
+    doge = "DOGE/KRW"
+    btc = "BTC/KRW"
+    xrp = "XRP/KRW"
+    eth = "ETH/KRW"
+    sol = "SOL/KRW"
 
     #currencies = [doge, btc, xrp, eth, sol]
     currencies = [doge, xrp, sol]
-    
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)

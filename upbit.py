@@ -6,9 +6,6 @@ import pandas as pd
 
 from conf import key
 from pprint import pprint
-from datetime import datetime
-from dataclasses import dataclass
-
 from collections import defaultdict
 
 # Bollinger band buy/sell order 
@@ -19,22 +16,19 @@ sell_order = defaultdict(bool)
 scalping_buy = defaultdict(bool)
 scalping_sell= defaultdict(bool)
 
-# Global variable to keep the count for max 15 minutes continue for order
-iterations = defaultdict(int)
+# Bollinger band analysis based buy, sell amount
+bb_trading_amount = 1000000
+
+# MFI and RSI analysis based scalping amount 
+scalping_sell_amount = 5000000
+scalping_buy_amount  = 3000000
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
 mfi_1d = defaultdict(float)
 
-# Free balance
-free_balance = defaultdict(float)
-
-# One minute buy or sell amount
-one_minute_amount = 700000
-
-# MFI and RSI based scalping 
-scalping_sell_amount = 5000000
-scalping_buy_amount = 1500000
+# Global variable to keep the count for max 15 minutes continue for order
+iterations = defaultdict(int)
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -161,7 +155,7 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         global scalping_sell 
         scalping_sell[symbol] = sell 
 
-        buy  = ( mfi_3m < 20 ) | (rsi_3m < 30) 
+        buy  = (rsi_3m < 30) 
         df['scalping_buy'] = buy 
         
         global scalping_buy 
@@ -180,7 +174,7 @@ def sell_coin(exchange, symbol: str):
         pprint(orderbook)
 
         avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((one_minute_amount)/ avg_price, 5)
+        amount    = round((bb_trading_amount)/ avg_price, 5)
 
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} average price : {avg_price}, sell amount = {amount}')  
@@ -215,8 +209,8 @@ def buy_coin(exchange,symbol: str)->None:
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
-        if free_KRW > (one_minute_amount ):
-            amount = (one_minute_amount) 
+        if free_KRW > (bb_trading_amount ):
+            amount = (bb_trading_amount) 
         else:
             print("------- Cancel buy for low balance ------------")
             return
@@ -253,7 +247,7 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         print("Exception : ", str(e))
 
 def execute_order(exchange, symbol: str)->None:
-
+    
     sell   = sell_order[symbol]
     buy    = buy_order[symbol]
 
@@ -277,13 +271,13 @@ def execute_scalping(exchange, symbol: str)->None:
     elif sell:
        scalping_sell_coin(exchange, symbol)
 
-def monitor(x : list[str]):
+def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
     column_name= ["Symbol", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
     orders = pd.DataFrame(columns = column_name)
 
-    for s in x:
+    for s in symbols:
         orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
 
@@ -291,15 +285,11 @@ if __name__=='__main__':
 
     exchange = init_upbit()
 
-    # Define currency
+    #define symbols 
     doge = "DOGE/KRW"
-    btc = "BTC/KRW"
-    xrp = "XRP/KRW"
-    eth = "ETH/KRW"
-    sol = "SOL/KRW"
-
-    #currencies = [doge, btc, xrp, eth, sol]
-    currencies = [doge, xrp, sol]
+    xrp  = "XRP/KRW"
+    sol  = "SOL/KRW"
+    btc  = "BTC/KRW"
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
@@ -321,22 +311,17 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(3).minutes.do(execute_scalping, exchange, sol)
-    '''
+    
+    schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping, exchange, btc)
 
-    schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
-    schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
-    schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
-    schedule.every(1).minutes.do(execute_order, exchange, eth)
-    schedule.every(3).minutes.do(execute_scalping, exchange, eth)
-
-    '''
-    schedule.every(30).seconds.do(monitor, currencies)
+    symbols= [doge, xrp, sol, btc]
+    schedule.every(30).seconds.do(monitor, symbols)
 
     while True:
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(0.1)

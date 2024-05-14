@@ -21,11 +21,7 @@ check_mfi = defaultdict(float)
 # 3 minute RSI check
 check_rsi_3m = defaultdict(float)
 
-# Bollinger band criteria 4h minutes
-buy_order_4h = defaultdict(bool)
-sell_order_4h = defaultdict(bool)
-
-# mfi scalping 1 minute
+# mfi scalping 3 minute
 scalping_buy_order = defaultdict(bool)
 scalping_sell_order= defaultdict(bool)
 
@@ -37,9 +33,9 @@ pullback_buy_price = defaultdict(float)
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
-iterations_4h = defaultdict(int)
 
-mfi = defaultdict(float)
+# MFI 4hour for volatility analysis
+mfi_4h = defaultdict(float)
 
 # Free balance
 free_balance = defaultdict(float)
@@ -47,9 +43,8 @@ free_balance = defaultdict(float)
 # One minute buy or sell amount
 one_minute_amount = 700000
 
-# MFI based scalping 
-scalping_amount = 1000000
-
+# MFI and RSI based scalping 
+scalping_amount = 5000000
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -103,7 +98,6 @@ def analyze_signals_3m(exchange, currency)->None:
         global check_rsi_3m
         check_rsi_3m[symbol] = df['rsi'].iloc[-1]
 
-
         global scalping_buy_order 
         global scalping_sell_order 
 
@@ -123,9 +117,8 @@ def analyze_signals_3m(exchange, currency)->None:
         df['scaling_buy'] = scalping_sell_order[symbol]
         df['scaling_sell'] = scalping_buy_order[symbol]
 
-
-        # Find high within 6hour   
-        df['pullback_high'] = round (df['typical'].rolling(window = 72).max(), 1)
+        # Find high within 6 hour   
+        df['pullback_high'] = round (df['typical'].rolling(window = 120).max(), 1)
 
         global pullback_high
         global price
@@ -168,27 +161,23 @@ def analyze_signals_15m(exchange, currency)->None:
         df['bollinger_lower'] = round(df['bollinger_lower'], 1)
         df['mfi'] = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
         
-        df['mfi_crossover_sell'] = False
-        df['mfi_crossover_buy'] = False
-
         # update volatility 
-        mfi_4h = mfi[symbol] 
+        mfi = mfi_4h[symbol] 
         
         df['bollinger_width'] = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
         bb_width = df['bollinger_width'].iloc[-1]
 
-        volatility_threshold = calc_volatility(mfi_4h)
-        bb_volatility_enough = False
-        if bb_width >= volatility_threshold :
-            bb_volatility_enough = True
+        volatility_check = False
+        if bb_width >= calc_volatility(mfi) :
+            volatility_check = True
         else:
-            bb_volatility_enough = False
+            volatility_check = False
 
         global sell_order
         global buy_order
 
-        bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and bb_volatility_enough
-        bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and bb_volatility_enough
+        bollinger_sell = (df['close'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and volatility_check 
+        bollinger_buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and volatility_check 
 
         sell_order[symbol] = bollinger_sell
         buy_order[symbol] = bollinger_buy 
@@ -196,97 +185,33 @@ def analyze_signals_15m(exchange, currency)->None:
         df['bollinger_sell'] = bollinger_sell
         df['bollinger_buy'] = bollinger_buy
 
-        # mfi crossover strategy
-        mfi_now = round (df['mfi'].iloc[-1], 2)
-        mfi_last = round(df['mfi'].iloc[-2], 2)
-
-        if (mfi_last >= 80) and (mfi_now < 80):
-           mfi_sell_crossover = True 
-        else:
-           mfi_sell_crossover = False
-    
-        if (mfi_last <= 20) and (mfi_now >20):
-            mfi_buy_crossover = True
-        else:
-            mfi_buy_crossover = False
-
-        sell_order[symbol] = sell_order[symbol] |  mfi_sell_crossover
-        buy_order[symbol] = buy_order[symbol] | mfi_buy_crossover
-
-        df['mfi_crossover_sell'] = mfi_sell_crossover
-        df['mfi_crossover_buy'] = mfi_buy_crossover
         pprint(df.iloc[-1])
-
 
     except Exception as e:
         print("Exception : ", str(e))
+
 
 def analyze_signals_4h(exchange, currency)->None:
     try:
         symbol = currency.symbol
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['volume'] = round(df['volume'], 1)
 
-       # Investment Control Parameter Selection 
-        print(f'\n----------------------- {symbol} MFI Analysis ( 4 hour ) -----------------------------')
-        # Signal analysis one hour 
-        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
-        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
-        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['volume'] = round(df_4h['volume'], 1)
+        df['mfi'] = round( talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
 
-        # Caculated BB and Money Flow Index for trends
-        df_4h['bollinger_upper'], df_4h['bollinger_middle'], df_4h['bollinger_lower'] = talib.BBANDS(df_4h['close'])
+        global mfi_4h
+        mfi_4h[symbol] = df['mfi'].iloc[-1]
 
-        df_4h['bollinger_sell'] = (df_4h['high'] > df_4h['bollinger_upper'])
-        df_4h['bollinger_buy'] = (df_4h['low'] < df_4h['bollinger_lower'])
-        df_4h['bollinger_width'] = round(((df_4h['bollinger_upper'] - df_4h['bollinger_lower'])/df_4h['bollinger_middle']) * 100, 3)
-        df_4h['bollinger_upper'] = round(df_4h['bollinger_upper'], 1)
-        df_4h['bollinger_middle']= round(df_4h['bollinger_middle'], 1)
-        df_4h['bollinger_lower'] = round(df_4h['bollinger_lower'], 1)
+        print(f'\n----------- {symbol} MFI analysis (4 hour) --------------')
 
-        global sell_order_4h
-        global buy_order_4h
-        sell_order_4h[symbol] = df_4h['bollinger_sell'].iloc[-1]
-        buy_order_4h[symbol] = df_4h['bollinger_buy'].iloc[-1]
-
-        # 4h bollinger crossover signal detect 
-        bb_4h_last = round(df_4h['bollinger_middle'].iloc[-2], 2) < df_4h['close'].iloc[-2]
-        bb_4h_now =  round (df_4h['bollinger_middle'].iloc[-1], 2) > df_4h['close'].iloc[-1]
-
-        bb_4h_sell_crossover = ( bb_4h_last == True  ) and ( bb_4h_now == True ) 
-        bb_4h_buy_crossover  = ( bb_4h_last == False ) and ( bb_4h_now == False )
-
-        df_4h['bollinger_crossover_sell'] = bb_4h_sell_crossover
-        df_4h['bollinger_crossover_buy'] = bb_4h_buy_crossover
-
-        sell_order_4h[symbol] = sell_order_4h[symbol] | bb_4h_sell_crossover 
-        buy_order_4h[symbol] = buy_order_4h[symbol] | bb_4h_buy_crossover
-
-        # mfi crossover strategy
-        df_4h['mfi'] = round(talib.MFI(df_4h['high'], df_4h['low'], df_4h['close'], df_4h['volume'], timeperiod=14), 1)
-        mfi_last = round(df_4h['mfi'].iloc[-2], 2)
-        mfi_now = round (df_4h['mfi'].iloc[-1], 2)
-
-        if (mfi_last >= 80) and (mfi_now < 80):
-           mfi_crossover_sell = True 
-        else:
-           mfi_crossover_sell = False
-    
-        if (mfi_last <= 20) and (mfi_now >20):
-            mfi_crossover_buy = True
-        else:
-            mfi_crossover_buy = False
-        
-        sell_order_4h[symbol] = sell_order_4h[symbol] | mfi_crossover_sell
-        buy_order_4h[symbol] = buy_order_4h[symbol] | mfi_crossover_buy
-        
-        df_4h['mfi_crossover_sell'] = mfi_crossover_sell 
-        df_4h['mfi_crossover_buy'] = mfi_crossover_buy 
-
-        pprint(df_4h.iloc[-1])
+        pprint(df.iloc[-1])
 
     except Exception as e:
         print("Exception : ", str(e))
+
 
 def analyze_signals_1d(exchange, currency)->None:
     try:
@@ -313,6 +238,7 @@ def analyze_signals_1d(exchange, currency)->None:
         # mfi crossover strategy
         mfi_now = round (df_1d['mfi'].iloc[-1], 2)
 
+        # daily mfi
         global mfi
         mfi[symbol] = mfi_now
 
@@ -459,24 +385,6 @@ def execute_scalping_order(exchange, currency)->None:
     elif sell:
        scalping_sell_coin(exchange, currency)
 
-def execute_order_4h(exchange, currency)->None:
-
-    symbol = currency.symbol
-
-    # 4h analysis & buy/sell decision handling
-    sell   = sell_order_4h[symbol] 
-    buy    = buy_order_4h[symbol]
-
-    if buy:
-       buy_coin(exchange, currency)
-    elif sell:
-       sell_coin(exchange, currency)
-
-    global iterations_4h
-    iterations_4h[symbol] = iterations_4h[symbol] + 1
-    if (iterations_4h[symbol] % 16== 0):
-       reset_sell_buy_order_4h(symbol)
-
 @dataclass(frozen=True)
 class Currency:
     symbol:str
@@ -517,43 +425,38 @@ if __name__=='__main__':
     sol = Currency( symbol="SOL/KRW")
 
     #currencies = [doge, btc, xrp, eth, sol]
-    currencies = [doge, xrp]
+    currencies = [doge]
     
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, doge)
-    schedule.every(15).minutes.do(execute_order_4h, exchange, doge)
     
+    """
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, xrp)
-    schedule.every(15).minutes.do(execute_order_4h, exchange, xrp)
 
-    """
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, btc)
-    schedule.every(15).minutes.do(execute_order_4h, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
     schedule.every(1).minutes.do(execute_order, exchange, eth)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, eth)
-    schedule.every(15).minutes.do(execute_order_4h, exchange, eth)
     
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(3).minutes.do(execute_scalping_order, exchange, sol)
-    schedule.every(15).minutes.do(execute_order_4h, exchange, sol)
     """
     schedule.every(30).seconds.do(monitor_buy_sell_order, currencies)
     schedule.every(30).seconds.do(fetch_balance, exchange, currencies)

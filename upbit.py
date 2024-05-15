@@ -41,7 +41,7 @@ supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
 # supertrend buy amount at every 4 hour
-supertrend_buy_amount = 250000
+supertrend_buy_amount = 500000
 
 # supertrend sell one time 
 supertrend_sell_quota = defaultdict(float) 
@@ -524,6 +524,8 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
 
     schedule.every(30).seconds.do(monitor, symbols)
 

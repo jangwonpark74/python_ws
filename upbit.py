@@ -3,6 +3,7 @@ import talib
 import time
 import schedule
 import pandas as pd
+import logging 
 
 from conf import key
 from pprint import pprint
@@ -20,8 +21,8 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # MFI and RSI analysis based scalping amount 
-scalping_sell_amount = 6000000
-scalping_buy_amount  = 4000000
+scalping_sell_amount = 3000000
+scalping_buy_amount  = 3000000
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
@@ -41,7 +42,7 @@ supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
 # supertrend buy amount at every 4 hour
-supertrend_buy_amount = 500000
+supertrend_buy_amount = 1000000
 
 # supertrend sell one time 
 supertrend_sell_quota = defaultdict(float) 
@@ -234,7 +235,7 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         mfi_3m = df['mfi'].iloc[-1]
 
         sell = ( mfi_3m > 80 ) 
-        buy  = (mfi_3m < 20) 
+        buy  = (mfi_3m < 25) 
         df['scalping_sell'] = sell 
         df['scalping_buy'] = buy 
         
@@ -256,13 +257,16 @@ def sell_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((bb_trading_amount)/ avg_price, 5)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((bb_trading_amount)/ price, 5)
 
         print("\n------------ Make a sell order-----------")
-        print(f'{symbol} average price : {avg_price}, sell amount = {amount}')  
+        print(f'{symbol} average price : {price}, sell amount = {amount}')  
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
+
+        logging.info(f"Sell order placed for {symbol} at price: {price}")
+
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -272,13 +276,15 @@ def scalping_sell_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((scalping_sell_amount)/avg_price, 3)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((scalping_sell_amount)/price, 3)
 
         print("\n------------ Execute scalping sell -----------")
-        print(f'{symbol} average price : {avg_price}, scalping sell amount = {amount}')  
+        print(f'{symbol} price : {price}, scalping sell amount = {amount}')  
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
+
+        logging.info(f"Scalping Sell order placed for {symbol} at price: {price}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -288,6 +294,8 @@ def buy_coin(exchange,symbol: str)->None:
         print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
+
+        price = round(orderbook['asks'][0][0], 1)
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
@@ -303,6 +311,8 @@ def buy_coin(exchange,symbol: str)->None:
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
 
+        logging.info(f"Buy order placed for {symbol} at price: {price}, amount = {amount}")
+
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -311,6 +321,8 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
+
+        price = round(orderbook['asks'][0][0], 1)
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
@@ -325,6 +337,8 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+
+        logging.info(f"Scalping Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -436,6 +450,15 @@ def monitor(symbols : list[str]):
         orders.loc[len(orders)] = [s, supertrend_up[s], buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
 
+def monitor_balance(exchange):
+    try:
+        print("\n---------------- fetch balance result  -----------------")
+        balance = exchange.fetchBalance()
+        pprint(balance)
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 
 def init_supertrend_quota(symbols):
 
@@ -445,6 +468,9 @@ def init_supertrend_quota(symbols):
         supertrend_sell_quota[x]= 4000000
 
 if __name__=='__main__':
+
+    # Configure logging
+    logging.basicConfig(filename="./trading.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     exchange = init_upbit()
 
@@ -477,6 +503,8 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, xrp)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
@@ -487,7 +515,9 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, sol)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, sol)
-    
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, sol)
+
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
@@ -501,6 +531,7 @@ if __name__=='__main__':
     schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
 
     schedule.every(30).seconds.do(monitor, symbols)
+    schedule.every(30).seconds.do(monitor_balance, exchange)
 
     while True:
         schedule.run_pending()

@@ -69,12 +69,6 @@ def reset_sell_buy_order(symbol: str):
     sell_order[symbol] = False
     buy_order[symbol] = False
 
-def reset_sell_buy_order_4h(symbol : str):
-    global sell_order_4h
-    global buy_order_4h
-    sell_order_4h[symbol] = False
-    buy_order_4h[symbol] = False
-
 def calc_volatility(x: float) -> float:
     volatility = round(-0.0012 * x * x + 0.12 * x +0.5, 2)
     return volatility

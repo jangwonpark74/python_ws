@@ -33,6 +33,16 @@ iterations = defaultdict(int)
 # Current supertrend 
 supertrend_up = defaultdict(bool)
 
+# Supertrend buy, sell
+supertrend_buy = defaultdict(bool)
+supertrend_sell = defaultdict(bool)
+
+# supertrend buy amount at every 4 hour
+supertrend_buy_amount = 400000
+
+# supertrend sell one time 
+supertrend_sell_amount = 40000000
+
 pd.set_option('display.max_rows', None)
 
 def init_upbit():
@@ -157,6 +167,12 @@ def analyze_supertrend(exchange, symbol: str)->None:
 
         global supertrend_up
         supertrend_up[symbol] = df.iloc[-1]['in_uptrend']
+
+        global supertrend_buy
+        supertrend_buy[symbol] = df.iloc[-1]['in_uptrend']
+
+        global supertrend_sell
+        supertrend_sell[symbol] = (df.iloc[-2]['in_uptrend'] == True) and (df.iloc[-1]['in_uptrend'] == False)
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -325,6 +341,48 @@ def scalping_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+def supertrend_sell_coin(exchange, symbol: str):
+    try:
+        print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
+        pprint(orderbook)
+
+        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((supertrend_sell_amount)/avg_price, 3)
+
+        print("\n------------ Execute scalping sell -----------")
+        print(f'{symbol} average price : {avg_price}, supertrend sell amount = {amount}')  
+        resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
+        pprint(resp)
+
+        global supertrend_sell[symbol] = False
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def supertrend_buy_coin(exchange, symbol: str):
+    try:
+        print("\n------------Getting order book -----------")
+        orderbook = exchange.fetch_order_book(symbol)
+        pprint(orderbook)
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        amount = 0.0
+        if free_KRW > (supertrend_buy_amount ):
+            amount = (supertrend_buy_amount) 
+        else:
+            print("------- Cancel buy for low balance ------------")
+            return
+
+        print("\n------------ Excute supertrend buy -----------")
+        exchange.options['createMarketBuyOrderRequiresPrice']=False
+        resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
+        pprint(resp)
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 def execute_order(exchange, symbol: str)->None:
     
     sell   = sell_order[symbol]
@@ -351,6 +409,19 @@ def execute_scalping_sell(exchange, symbol: str)->None:
 
     if buy:
         scalping_buy_coin(exchange, symbol)
+
+
+def execute_supertrend_sell(exchange, symbol: str):
+    sell = supertrend_sell[symbol]
+
+    if sell:
+        supertrend_sell_coin(exchange, symbol)
+
+def execute_supertrend_buy(exchange, symbol:str):
+    buy = supertrend_buy[symbol]
+
+    if buy:
+        supertrend_buy_coin(exchange, symbol)
 
 
 def monitor(symbols : list[str]):
@@ -382,7 +453,9 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, doge)
-    
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, doge)
+
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)

@@ -20,7 +20,7 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # MFI and RSI analysis based scalping amount 
-scalping_sell_amount = 4000000
+scalping_sell_amount = 5000000
 scalping_buy_amount  = 1000000
 
 # MFI 4hour for volatility analysis
@@ -168,13 +168,13 @@ def analyze_signals_1m(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
+        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 2)
 
         # Scalping decision based on 1 minute MFI  
-        mfi_1m = df['mfi'].iloc[-1]
+        rsi_1m = df['rsi'].iloc[-1]
 
         global scalping_buy 
-        buy  = (mfi_1m < 20) 
+        buy  = (rsi_1m < 33) 
         scalping_buy[symbol] = buy 
         df['scalping_buy'] = buy 
 

@@ -38,10 +38,10 @@ supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
 # supertrend buy amount at every 4 hour
-supertrend_buy_amount = 400000
+supertrend_buy_amount = 1000000
 
 # supertrend sell one time 
-supertrend_sell_amount = 40000000
+supertrend_sell_amount = 30000000
 
 pd.set_option('display.max_rows', None)
 
@@ -355,7 +355,8 @@ def supertrend_sell_coin(exchange, symbol: str):
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        global supertrend_sell[symbol] = False
+        global supertrend_sell
+        supertrend_sell[symbol] = False
 
     except Exception as e:
         print("Exception : ", str(e))

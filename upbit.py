@@ -75,7 +75,7 @@ def reset_sell_buy_order_4h(symbol : str):
     buy_order_4h[symbol] = False
 
 def calc_volatility(x: float) -> float:
-    volatility = round(-0.0012 * x * x + 0.12 * x, 2)
+    volatility = round(-0.0012 * x * x + 0.12 * x +0.5, 2)
     return volatility
 
 def analyze_signals_1d(exchange, symbol: str)->None:
@@ -228,48 +228,27 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 2)
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
 
         # Scalping based on 3 minute MFI and RSI 
         mfi_3m = df['mfi'].iloc[-1]
-        rsi_3m = df['rsi'].iloc[-1]
 
         sell = ( mfi_3m > 80 ) 
+        buy  = (mfi_3m < 20) 
         df['scalping_sell'] = sell 
+        df['scalping_buy'] = buy 
         
         global scalping_sell 
+        global scalping_buy
+
         scalping_sell[symbol] = sell 
+        scalping_buy[symbol] = buy 
 
         print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
         print("Exception : ", str(e))
-
-
-def analyze_signals_1m(exchange, symbol: str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1m')
-        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14 ), 2)
-
-        # Scalping decision based on 1 minute MFI  
-        rsi_1m = df['rsi'].iloc[-1]
-
-        global scalping_buy 
-        buy  = (rsi_1m < 33) 
-        scalping_buy[symbol] = buy 
-        df['scalping_buy'] = buy 
-
-        print(f'\n----------- {symbol} Signal Analysis (1 minutes) --------------')
-        pprint(df.iloc[-1])
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
 
 def sell_coin(exchange, symbol: str):
     try:
@@ -482,7 +461,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
-    schedule.every(30).seconds.do(analyze_signals_1m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
@@ -494,7 +472,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_signals_1m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
 
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
@@ -505,7 +482,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
-    schedule.every(30).seconds.do(analyze_signals_1m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
 
     schedule.every(1).minutes.do(execute_order, exchange, sol)
@@ -516,7 +492,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
-    schedule.every(30).seconds.do(analyze_signals_1m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
 
     schedule.every(1).minutes.do(execute_order, exchange, btc)

@@ -136,29 +136,6 @@ def analyze_signals_15m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def analyze_signals_1m(exchange, symbol: str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1m')
-        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
-
-        # Scalping based on 3 minute MFI and RSI 
-        mfi_1m = df['mfi'].iloc[-1]
-
-        global scalping_buy 
-        buy  = (mfi_1m < 20) 
-        scalping_buy[symbol] = buy 
-        df['scalping_buy'] = buy 
-
-        print(f'\n----------- {symbol} Signal Analysis (1 minutes) --------------')
-        pprint(df.iloc[-1])
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
-
 def analyze_signals_3m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
@@ -183,6 +160,30 @@ def analyze_signals_3m(exchange, symbol: str)->None:
 
     except Exception as e:
         print("Exception : ", str(e))
+
+
+def analyze_signals_1m(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
+
+        # Scalping decision based on 1 minute MFI  
+        mfi_1m = df['mfi'].iloc[-1]
+
+        global scalping_buy 
+        buy  = (mfi_1m < 20) 
+        scalping_buy[symbol] = buy 
+        df['scalping_buy'] = buy 
+
+        print(f'\n----------- {symbol} Signal Analysis (1 minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 
 def sell_coin(exchange, symbol: str):
     try:

@@ -460,11 +460,12 @@ def monitor(symbols : list[str]):
     pprint(orders)
 
 
-def init_supertrend_quota(symbols)
+def init_supertrend_quota(symbols):
 
     global supertrend_sell_quota 
+
     for x in symbols:
-    supertrend_sell_quota[x]= 4000000
+        supertrend_sell_quota[x]= 4000000
 
 if __name__=='__main__':
 

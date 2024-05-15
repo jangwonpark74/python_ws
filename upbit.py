@@ -20,8 +20,8 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # MFI and RSI analysis based scalping amount 
-scalping_sell_amount = 5000000
-scalping_buy_amount  = 3000000
+scalping_sell_amount = 4000000
+scalping_buy_amount  = 1000000
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
@@ -136,6 +136,29 @@ def analyze_signals_15m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+def analyze_signals_1m(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
+
+        # Scalping based on 3 minute MFI and RSI 
+        mfi_1m = df['mfi'].iloc[-1]
+
+        global scalping_buy 
+        buy  = (mfi_1m < 20) 
+        scalping_buy[symbol] = buy 
+        df['scalping_buy'] = buy 
+
+        print(f'\n----------- {symbol} Signal Analysis (1 minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+
 def analyze_signals_3m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
@@ -154,12 +177,6 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         
         global scalping_sell 
         scalping_sell[symbol] = sell 
-
-        buy  = (rsi_3m < 30) 
-        df['scalping_buy'] = buy 
-        
-        global scalping_buy 
-        scalping_buy[symbol] = buy 
 
         print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])
@@ -261,15 +278,18 @@ def execute_order(exchange, symbol: str)->None:
     if (iterations[symbol] % 12== 0):
        reset_sell_buy_order(symbol)
 
-def execute_scalping(exchange, symbol: str)->None:
-
+def execute_scalping_buy(exchange, symbol: str)->None:
     sell   = scalping_sell[symbol] 
+
+    if sell:
+       scalping_sell_coin(exchange, symbol)
+
+def execute_scalping_sell(exchange, symbol: str)->None:
     buy    = scalping_buy[symbol]
 
     if buy:
-       scalping_buy_coin(exchange, symbol)
-    elif sell:
-       scalping_sell_coin(exchange, symbol)
+        scalping_buy_coin(exchange, symbol)
+
 
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -295,33 +315,44 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_signals_1m, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
-    schedule.every(3).minutes.do(execute_scalping, exchange, doge)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
+    schedule.every(1).minutes.do(execute_scalping_buy, exchange, doge)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_signals_1m, exchange, xrp)
+
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
-    schedule.every(3).minutes.do(execute_scalping, exchange, xrp)
+    schedule.every(1).minutes.do(execute_scalping_buy, exchange, xrp)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_signals_1m, exchange, sol)
+
     schedule.every(1).minutes.do(execute_order, exchange, sol)
-    schedule.every(3).minutes.do(execute_scalping, exchange, sol)
+    schedule.every(1).minutes.do(execute_scalping_buy, exchange, sol)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, sol)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_signals_1m, exchange, btc)
+
     schedule.every(1).minutes.do(execute_order, exchange, btc)
-    schedule.every(3).minutes.do(execute_scalping, exchange, btc)
+    schedule.every(1).minutes.do(execute_scalping_buy, exchange, btc)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
 
     symbols= [doge, xrp, sol, btc]
     schedule.every(30).seconds.do(monitor, symbols)
 
     while True:
         schedule.run_pending()
-        time.sleep(0.1)
+        time.sleep(0.01)

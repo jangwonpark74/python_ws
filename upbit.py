@@ -261,11 +261,11 @@ def sell_coin(exchange, symbol: str):
         amount    = round((bb_trading_amount)/ price, 5)
 
         print("\n------------ Make a sell order-----------")
-        print(f'{symbol} average price : {price}, sell amount = {amount}')  
+        print(f'{symbol} price : {price}, sell amount = {amount}')  
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        logging.info(f"Sell order placed for {symbol} at price: {price}")
+        logging.info(f"Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -284,7 +284,7 @@ def scalping_sell_coin(exchange, symbol: str):
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        logging.info(f"Scalping Sell order placed for {symbol} at price: {price}")
+        logging.info(f"Scalping Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

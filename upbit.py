@@ -30,6 +30,9 @@ mfi_1d = defaultdict(float)
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
 
+# Global variable to keep supertrend sell count
+supertrend_sell_iter = defaultdict(int)
+
 # Current supertrend 
 supertrend_up = defaultdict(bool)
 
@@ -38,12 +41,14 @@ supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
 # supertrend buy amount at every 4 hour
-supertrend_buy_amount = 1000000
+supertrend_buy_amount = 250000
 
 # supertrend sell one time 
-supertrend_sell_amount = 30000000
+supertrend_sell_quota = defaultdict(float) 
+supertrend_sell_amount = defaultdict(float)
 
 pd.set_option('display.max_rows', None)
+
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -171,8 +176,14 @@ def analyze_supertrend(exchange, symbol: str)->None:
         global supertrend_buy
         supertrend_buy[symbol] = df.iloc[-1]['in_uptrend']
 
+        if supertrend_buy[symbol] == True:
+            supertrend_sell_quota[symbol] = 400000
+
         global supertrend_sell
         supertrend_sell[symbol] = (df.iloc[-2]['in_uptrend'] == True) and (df.iloc[-1]['in_uptrend'] == False)
+
+        if supertrend_sell[symbol] == True:
+            supertrend_sell_iter[symbol] = 1 
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -341,6 +352,13 @@ def scalping_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+def supertrend_sell_update(symbol: str):
+    global supertrend_sell_amount
+    supertrend_sell_amount[symbol] = supertrend_sell_quota[symbol]/ pow(1.5, supertrend_sell_iter[symbol])
+    
+    if supertrend_sell_amount[symbol] < 500000:
+        supertrend_sell_amount[symbol] = 250000
+ 
 def supertrend_sell_coin(exchange, symbol: str):
     try:
         print("\n------------Getting order book -----------")
@@ -355,8 +373,14 @@ def supertrend_sell_coin(exchange, symbol: str):
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        global supertrend_sell
-        supertrend_sell[symbol] = False
+        global supertrend_sell_iter 
+        supertrend_sell_iter[symbol] = supertrend_sell_iter[symbol] + 1
+
+        supertrend_sell_amount_update(symbol)
+
+        if supertrend_sell_iter > 10 :
+            global supertrend_sell
+            supertrend_sell[symbol] = False
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -435,6 +459,13 @@ def monitor(symbols : list[str]):
         orders.loc[len(orders)] = [s, supertrend_up[s], buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
 
+
+def init_supertrend_quota(symbols)
+
+    global supertrend_sell_quota 
+    for x in symbols:
+    supertrend_sell_quota[x]= 4000000
+
 if __name__=='__main__':
 
     exchange = init_upbit()
@@ -444,6 +475,9 @@ if __name__=='__main__':
     xrp  = "XRP/KRW"
     sol  = "SOL/KRW"
     btc  = "BTC/KRW"
+
+    symbols= [doge, xrp, sol, btc]
+    init_supertrend_quota(symbols)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
@@ -490,7 +524,6 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
 
-    symbols= [doge, xrp, sol, btc]
     schedule.every(30).seconds.do(monitor, symbols)
 
     while True:

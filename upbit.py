@@ -30,6 +30,11 @@ mfi_1d = defaultdict(float)
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
 
+# Current supertrend 
+supertrend_up = defaultdict(bool)
+
+pd.set_option('display.max_rows', None)
+
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
     print(f'Initialized CCXT with version : {ccxt.__version__}')
@@ -55,7 +60,7 @@ def reset_sell_buy_order_4h(symbol : str):
     buy_order_4h[symbol] = False
 
 def calc_volatility(x: float) -> float:
-    volatility = round(-0.0012 * x * x + 0.12 * x + 0.5, 2)
+    volatility = round(-0.0012 * x * x + 0.12 * x, 2)
     return volatility
 
 def analyze_signals_1d(exchange, symbol: str)->None:
@@ -102,6 +107,61 @@ def analyze_signals_4h(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+
+def analyze_supertrend(exchange, symbol: str)->None:
+    try:
+        # upto two weeks analyze supertrend 
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h', limit= 120)
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        df['high-low'] = df['high'] - df['low']
+        df['pc']       = df['close'].shift(1)
+        df['high-pc']  = abs(df['high'] - df['pc'])
+        df['low-pc']   = abs(df['low'] -df['pc'])
+        
+        df['tr'] = df[['high-low', 'high-pc', 'low-pc']].max(axis=1) 
+
+        period = 14
+        multiplier = 2.0
+
+        df['atr'] = df['tr'].rolling(period).mean() 
+
+        df['hl2'] = (df['high'] + df['low'])/2 
+
+        df['upperband'] = (df['high'] + df['low'])/2 + (multiplier * df['atr'])
+        df['lowerband'] = (df['high'] + df['low'])/2 - (multiplier * df['atr'])
+
+        df['in_uptrend'] = False
+
+        for i in range(1, len(df.index)):
+            p = i - 1 
+
+            if df['close'][i] > df['upperband'][p]:
+                df.loc[i, 'in_uptrend'] = True
+            elif df['close'][i] < df['lowerband'][p]:
+                df.loc[i, 'in_uptrend'] = False
+            else:
+                df.loc[i, 'in_uptrend'] = df.loc[p,'in_uptrend'] 
+
+                if (df['in_uptrend'][i] == True) and df['lowerband'][i] < df['lowerband'][p] :
+                    df.loc[i, 'lowerband'] = df.loc[p, 'lowerband']
+
+                if (df['in_uptrend'][i] == False) and df['upperband'][i] > df['upperband'][p]:
+                    df.loc[i, 'upperband'] = df.loc[p, 'upperband'] 
+        
+        print(f'\n----------- Analyze supertrend(4h) --------------')
+
+        pprint(df.iloc[-1])
+
+        global supertrend_up
+        supertrend_up[symbol] = df.iloc[-1]['in_uptrend']
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+
 def analyze_signals_15m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
@@ -135,6 +195,7 @@ def analyze_signals_15m(exchange, symbol: str)->None:
 
     except Exception as e:
         print("Exception : ", str(e))
+
 
 def analyze_signals_3m(exchange, symbol: str)->None:
     try:
@@ -276,7 +337,7 @@ def execute_order(exchange, symbol: str)->None:
 
     global iterations
     iterations[symbol] = iterations[symbol] + 1
-    if (iterations[symbol] % 12== 0):
+    if (iterations[symbol] % 15 == 0):
        reset_sell_buy_order(symbol)
 
 def execute_scalping_buy(exchange, symbol: str)->None:
@@ -295,11 +356,11 @@ def execute_scalping_sell(exchange, symbol: str)->None:
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
+    column_name= ["Symbol","Supertrend Up", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:
-        orders.loc[len(orders)] = [s, buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
+        orders.loc[len(orders)] = [s, supertrend_up[s], buy_order[s], sell_order[s], scalping_buy[s],scalping_sell[s]]
     pprint(orders)
 
 if __name__=='__main__':
@@ -317,6 +378,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_1m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
     schedule.every(1).minutes.do(execute_order, exchange, doge)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, doge)
@@ -326,6 +388,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_1m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
 
     schedule.every(1).minutes.do(execute_order, exchange, xrp)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, xrp)
@@ -336,6 +399,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_1m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
 
     schedule.every(1).minutes.do(execute_order, exchange, sol)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, sol)
@@ -346,6 +410,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_1m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
 
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(1).minutes.do(execute_scalping_buy, exchange, btc)

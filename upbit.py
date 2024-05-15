@@ -20,8 +20,8 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # MFI and RSI analysis based scalping amount 
-scalping_sell_amount = 5000000
-scalping_buy_amount  = 1000000
+scalping_sell_amount = 6000000
+scalping_buy_amount  = 4000000
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
@@ -142,8 +142,6 @@ def analyze_supertrend(exchange, symbol: str)->None:
         multiplier = 2.0
 
         df['atr'] = df['tr'].rolling(period).mean() 
-
-        df['hl2'] = (df['high'] + df['low'])/2 
 
         df['upperband'] = (df['high'] + df['low'])/2 + (multiplier * df['atr'])
         df['lowerband'] = (df['high'] + df['low'])/2 - (multiplier * df['atr'])

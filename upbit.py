@@ -313,7 +313,7 @@ def sell_coin(exchange, symbol: str):
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        logging.info(f"Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Bollinger Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -332,7 +332,7 @@ def scalping_sell_coin(exchange, symbol: str):
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        logging.info(f"Scalping Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI Scalping Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -351,7 +351,7 @@ def stochrsi_sell_coin(exchange, symbol: str):
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
 
-        logging.info(f"Stoch RSI Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Stochrsi Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -457,6 +457,8 @@ def supertrend_sell_coin(exchange, symbol: str):
         print(f'{symbol} average price : {avg_price}, supertrend sell amount = {amount}')  
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
+        
+        logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
         global supertrend_sell_iter 
         supertrend_sell_iter[symbol] = supertrend_sell_iter[symbol] + 1
@@ -489,6 +491,7 @@ def supertrend_buy_coin(exchange, symbol: str):
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+        logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

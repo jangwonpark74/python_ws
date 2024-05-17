@@ -255,22 +255,30 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         stoch_rsi_sell = previous['stoch_rsi_k'] > 80 and previous['stoch_rsi_d'] > 80 and latest['stoch_rsi_k'] < 80 and latest['stoch_rsi_d'] < 80
         stoch_rsi_buy = previous['stoch_rsi_k'] < 20 and previous['stoch_rsi_d'] < 20 and latest['stoch_rsi_k'] > 20 and latest['stoch_rsi_d'] > 20
 
-        df['stoch_rsi_sell'] = stoch_rsi_sell
-        df['stoch_rsi_buy'] = stoch_rsi_buy
 
         # Scalping based on 3 minute MFI and RSI 
         mfi_3m = df['mfi'].iloc[-1]
+        mfi_sell = ( mfi_3m > mfi_high_threshold ) 
+        mfi_buy  = (mfi_3m < mfi_low_threshold) 
 
-        sell = ( mfi_3m > mfi_high_threshold ) 
-        buy  = (mfi_3m < mfi_low_threshold) 
-        df['scalping_sell'] = sell | stoch_rsi_sell 
-        df['scalping_buy'] = buy | stoch_rsi_buy
+        sell = mfi_sell | stoch_rsi_sell 
+        buy = mfi_buy | stoch_rsi_buy
 
+        # update data for execution of order
         global scalping_sell 
         global scalping_buy
-
         scalping_sell[symbol] = sell 
         scalping_buy[symbol] = buy 
+
+        # store information for dispaly
+        df['mfi_sell'] = mfi_sell
+        df['mfi_buy'] = mfi_buy
+
+        df['stoch_rsi_sell'] = stoch_rsi_sell
+        df['stoch_rsi_buy'] = stoch_rsi_buy
+
+        df['scalping_sell'] = sell 
+        df['scalping_buy']  = buy
 
         print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])

@@ -21,12 +21,22 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # MFI and RSI analysis based scalping amount 
-scalping_sell_amount = 3000000
-scalping_buy_amount  = 3000000
+scalping_sell_amount = 4000000
+scalping_buy_amount  = 4000000
 
 # MFI 4hour for volatility analysis
 mfi_4h = defaultdict(float)
 mfi_1d = defaultdict(float)
+
+# MFI high low threshold
+
+mfi_high_threshold = 85
+mfi_low_threshold = 15 
+
+# Define parameters for Stochastic RSI
+stoch_rsi_period = 14
+stoch_rsi_period_k = 3
+stoch_rsi_period_d = 3
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
@@ -121,22 +131,23 @@ def analyze_signals_4h(exchange, symbol: str)->None:
 def analyze_supertrend(exchange, symbol: str)->None:
     try:
         # upto two weeks analyze supertrend 
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h', limit= 120)
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        df['high-low'] = df['high'] - df['low']
-        df['pc']       = df['close'].shift(1)
-        df['high-pc']  = abs(df['high'] - df['pc'])
-        df['low-pc']   = abs(df['low'] -df['pc'])
-        
-        df['tr'] = df[['high-low', 'high-pc', 'low-pc']].max(axis=1) 
+
+        # Reference 
+        # https://youtu.be/HpNZ2VpZzSE?si=gNjCwWVbaAJZCyBU
+
+        # supertrend slow  @ 12, hl2, 3 
+        # supertrend mid   @ 11, hl2, 2
+        # supertrend fast  @ 10, hl2, 1
 
         period = 14
         multiplier = 2.0
 
-        df['atr'] = df['tr'].rolling(period).mean() 
+        df['atr'] = talib.ATR(df['high'].values, df['low'].values, df['close'].values, timeperiod=period)
 
         df['upperband'] = (df['high'] + df['low'])/2 + (multiplier * df['atr'])
         df['lowerband'] = (df['high'] + df['low'])/2 - (multiplier * df['atr'])
@@ -159,6 +170,7 @@ def analyze_supertrend(exchange, symbol: str)->None:
                 if (df['in_uptrend'][i] == False) and df['upperband'][i] > df['upperband'][p]:
                     df.loc[i, 'upperband'] = df.loc[p, 'upperband'] 
         
+
         print(f'\n----------- Analyze supertrend(4h) --------------')
 
         pprint(df.iloc[-1])
@@ -170,7 +182,7 @@ def analyze_supertrend(exchange, symbol: str)->None:
         supertrend_buy[symbol] = df.iloc[-1]['in_uptrend']
 
         if supertrend_buy[symbol] == True:
-            supertrend_sell_quota[symbol] = 400000
+            supertrend_sell_quota[symbol] = 4000000
 
         global supertrend_sell
         supertrend_sell[symbol] = (df.iloc[-2]['in_uptrend'] == True) and (df.iloc[-1]['in_uptrend'] == False)
@@ -225,14 +237,35 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
 
+        w = stoch_rsi_period
+        w_k = stoch_rsi_period_k
+        w_d = stoch_rsi_period_d
+
+        rsi = talib.RSI(df['close'], timeperiod = 14)
+        stoch_rsi = (rsi - rsi.rolling(window=w).min())/(rsi.rolling(window=w).max()- rsi.rolling(window=w).min())
+        stoch_rsi_k = stoch_rsi.rolling(window=w_k).mean() * 100
+        stoch_rsi_d = stoch_rsi_k.rolling(window=w_d).mean()
+
+        df['stoch_rsi_k'] = stoch_rsi_k
+        df['stoch_rsi_d'] = stoch_rsi_d
+
+        lastest = df.iloc[-1]
+        previous = df.iloc[-2]
+
+        stoch_rsi_sell = previous['stoch_rsi_k'] > 80 and previous['stoch_rsi_d'] > 80 and latest['stoch_rsi_k'] < 80 and latest['stoch_rsi_d'] < 80
+        stoch_rsi_buy = previous['stoch_rsi_k'] < 20 and previous['stoch_rsi_d'] < 20 and latest['stoch_rsi_k'] > 20 and latest['stoch_rsi_d'] > 20
+
+        df['stoch_rsi_sell'] = stoch_rsi_sell
+        df['stoch_rsi_buy'] = stoch_rsi_buy
+
         # Scalping based on 3 minute MFI and RSI 
         mfi_3m = df['mfi'].iloc[-1]
 
-        sell = ( mfi_3m > 80 ) 
-        buy  = (mfi_3m < 25) 
-        df['scalping_sell'] = sell 
-        df['scalping_buy'] = buy 
-        
+        sell = ( mfi_3m > mfi_high_threshold ) 
+        buy  = (mfi_3m < mfi_low_threshold) 
+        df['scalping_sell'] = sell | stoch_rsi_sell 
+        df['scalping_buy'] = buy | stoch_rsi_buy
+
         global scalping_sell 
         global scalping_buy
 
@@ -341,8 +374,6 @@ def supertrend_sell_update(symbol: str):
     global supertrend_sell_amount
     supertrend_sell_amount[symbol] = supertrend_sell_quota[symbol]/ pow(1.5, supertrend_sell_iter[symbol])
     
-    if supertrend_sell_amount[symbol] < 500000:
-        supertrend_sell_amount[symbol] = 250000
  
 def supertrend_sell_coin(exchange, symbol: str):
     try:
@@ -473,8 +504,9 @@ if __name__=='__main__':
     xrp  = "XRP/KRW"
     sol  = "SOL/KRW"
     btc  = "BTC/KRW"
+    eth  = "ETH/KRW"
 
-    symbols= [doge, xrp, sol, btc]
+    symbols= [doge, xrp, sol, btc, eth]
     init_supertrend_quota(symbols)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
@@ -523,6 +555,18 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
     schedule.every(4).hours.do(execute_supertrend_sell, exchange, btc)
     schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
+
+    schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
+    schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
+    schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
+
+    schedule.every(1).minutes.do(execute_order, exchange, eth)
+    schedule.every(1).minutes.do(execute_scalping_buy, exchange, eth)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, eth)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, eth)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, eth)
 
     schedule.every(30).seconds.do(monitor, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)

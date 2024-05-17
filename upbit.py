@@ -29,6 +29,7 @@ stochrsi_30m_sell_amount = 3000000
 stochrsi_30m_buy_amount  = 3000000
 
 # MFI 4 hour for volatility analysis
+mfi_3m = defaultdict(float)
 mfi_4h = defaultdict(float)
 mfi_1d = defaultdict(float)
 
@@ -302,13 +303,13 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
 
         # Scalping based on 3 minute MFI  
-        mfi_3m = df['mfi'].iloc[-1]
+        mfi = df['mfi'].iloc[-1]
 
-        mfi_3m_sell = mfi_3m > mfi_high_threshold
-        mfi_3m_buy  = mfi_3m < mfi_low_threshold
+        sell = mfi > mfi_high_threshold
+        buy  = mfi < mfi_low_threshold
 
-        sell = mfi_3m_sell
-        buy = mfi_3m_buy
+        global mfi_3m
+        mfi_3m[symbol] = mfi
 
         # update data for execution of order
         global scalping_sell
@@ -317,11 +318,8 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         scalping_buy[symbol] = buy
 
         # store information for dispaly
-        df['mfi_sell'] = mfi_3m_sell
-        df['mfi_buy'] = mfi_3m_buy
-
-        df['scalping_sell'] = sell
-        df['scalping_buy']  = buy
+        df['mfi_3m_scalping_sell'] = sell
+        df['mfi_3m_scalping_buy']  = buy
 
         print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])

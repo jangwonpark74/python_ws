@@ -222,14 +222,13 @@ def analyze_signals_15m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def analyze_signals_5m(exchange, symbol: str)->None:
+def analyze_stochrsi(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        df['rsi'] = talib.RSI(df['close'], timeperiod = 14)
         df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
@@ -587,35 +586,35 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, doge)
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_stochrsi, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_stochrsi, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, sol)
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_stochrsi, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_stochrsi, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, eth)
-    schedule.every(30).seconds.do(analyze_signals_5m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_stochrsi, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
 

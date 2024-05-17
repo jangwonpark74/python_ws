@@ -595,13 +595,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_5m, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
-    schedule.every(1).minutes.do(execute_order, exchange, doge)
-    schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
-    schedule.every(3).minutes.do(execute_scalping_buy, exchange, doge)
-    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, doge)
-    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(2).hours.do(execute_supertrend_buy, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
@@ -609,14 +602,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_5m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
-
-    schedule.every(1).minutes.do(execute_order, exchange, xrp)
-    schedule.every(3).minutes.do(execute_scalping_buy, exchange, xrp)
-    schedule.every(3).minutes.do(execute_scalping_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, xrp)
-    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, xrp)
-    schedule.every(2).hours.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(2).hours.do(execute_supertrend_buy, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
@@ -625,28 +610,12 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
 
-    schedule.every(1).minutes.do(execute_order, exchange, sol)
-    schedule.every(3).minutes.do(execute_scalping_buy, exchange, sol)
-    schedule.every(3).minutes.do(execute_scalping_sell, exchange, sol)
-    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, sol)
-    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, sol)
-    schedule.every(2).hours.do(execute_supertrend_sell, exchange, sol)
-    schedule.every(2).hours.do(execute_supertrend_buy, exchange, sol)
-
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_5m, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
-
-    schedule.every(1).minutes.do(execute_order, exchange, btc)
-    schedule.every(3).minutes.do(execute_scalping_buy, exchange, btc)
-    schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
-    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, btc)
-    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, btc)
-    schedule.every(2).hours.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(2).hours.do(execute_supertrend_buy, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
@@ -655,14 +624,50 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
 
+    #bollinger band order every 1minutes with 15minutes analysis
+    schedule.every(1).minutes.do(execute_order, exchange, doge)
+    schedule.every(1).minutes.do(execute_order, exchange, xrp)
+    schedule.every(1).minutes.do(execute_order, exchange, sol)
+    schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, eth)
+
+    # mfi 3-minute based scalping
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, doge)
+    schedule.every(3).minutes.do(execute_scalping_buy, exchange, doge)
+    schedule.every(3).minutes.do(execute_scalping_buy, exchange, xrp)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, xrp)
+    schedule.every(3).minutes.do(execute_scalping_buy, exchange, sol)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, sol)
+    schedule.every(3).minutes.do(execute_scalping_buy, exchange, btc)
+    schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
     schedule.every(3).minutes.do(execute_scalping_buy, exchange, eth)
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, eth)
-    schedule.every(5).minutes.do(execute_scalping_buy, exchange, eth)
-    schedule.every(5).minutes.do(execute_scalping_sell, exchange, eth)
+
+    #stochrsi based order everu 5 minutes
+    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, doge)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, xrp)
+    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, sol)
+    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, sol)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, eth)
+    schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, eth)
+
+    #supertrend order every 2 hours
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, sol)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, btc)
     schedule.every(2).hours.do(execute_supertrend_sell, exchange, eth)
     schedule.every(2).hours.do(execute_supertrend_buy, exchange, eth)
 
+    # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
 

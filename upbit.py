@@ -35,8 +35,8 @@ mfi_low_threshold = 15
 
 # Define parameters for Stochastic RSI
 stoch_rsi_period = 14
-stoch_rsi_period_k = 3
-stoch_rsi_period_d = 3
+overbought_threshold = 80
+oversold_threshold = 20
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
@@ -237,23 +237,19 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
 
-        w = stoch_rsi_period
-        w_k = stoch_rsi_period_k
-        w_d = stoch_rsi_period_d
-
         rsi = talib.RSI(df['close'], timeperiod = 14)
-        stoch_rsi = (rsi - rsi.rolling(window=w).min())/(rsi.rolling(window=w).max()- rsi.rolling(window=w).min())
-        stoch_rsi_k = stoch_rsi.rolling(window=w_k).mean() * 100
-        stoch_rsi_d = stoch_rsi_k.rolling(window=w_d).mean()
+        stoch_rsi_k, stoch_rsi_d = talib.STOCHRSI(rsi, timeperiod=stoch_rsi_period) 
 
-        df['stoch_rsi_k'] = stoch_rsi_k
-        df['stoch_rsi_d'] = stoch_rsi_d
+        df['stoch_rsi_k'] = round(stoch_rsi_k, 2)
+        df['stoch_rsi_d'] = round(stoch_rsi_d, 2)
 
-        latest = df.iloc[-1]
-        previous = df.iloc[-2]
+        # Get the latest value
+        current_stoch_rsi_k = stoch_rsi_k[-1] 
+        current_stoch_rsi_d = stoch_rsi_d[-1] 
 
-        stoch_rsi_sell = previous['stoch_rsi_k'] > 80 and previous['stoch_rsi_d'] > 80 and latest['stoch_rsi_k'] < 80 and latest['stoch_rsi_d'] < 80
-        stoch_rsi_buy = previous['stoch_rsi_k'] < 20 and previous['stoch_rsi_d'] < 20 and latest['stoch_rsi_k'] > 20 and latest['stoch_rsi_d'] > 20
+        # Stoch rsi cross-over strategy
+        stoch_rsi_sell = current_stoch_rsi_k < current_stoch_rsi_d and current_stoch_rsi_k > overbought_threshold
+        stoch_rsi_buy = current_stoch_rsi_k > current_stoch_rsi_d and current_stoch_rsi_k < oversold_threshold 
 
 
         # Scalping based on 3 minute MFI and RSI 

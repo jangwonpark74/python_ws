@@ -37,8 +37,8 @@ overbought_threshold = 80
 oversold_threshold = 20
 
 # Stoch RSI sell buy every 5minutes
-stoch_rsi_sell = defaultdict(bool)
-stoch_rsi_buy = defaultdict(bool)
+stochrsi_sell = defaultdict(bool)
+stochrsi_buy = defaultdict(bool)
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
@@ -238,26 +238,26 @@ def analyze_signals_5m(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
         df['rsi'] = talib.RSI(df['close'], timeperiod = 14)
-        df['stoch_rsi_k'], df['stoch_rsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
+        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
-        current_stoch_rsi_k = df['stoch_rsi_k'].iloc[-1]
-        current_stoch_rsi_d = df['stoch_rsi_d'].iloc[-1]
+        current_stochrsi_k = df['stochrsi_k'].iloc[-1]
+        current_stochrsi_d = df['stochrsi_d'].iloc[-1]
 
         # Stoch rsi cross-over strategy
-        sell = current_stoch_rsi_k < current_stoch_rsi_d and current_stoch_rsi_k > overbought_threshold
-        buy = current_stoch_rsi_k > current_stoch_rsi_d and current_stoch_rsi_k < oversold_threshold 
+        sell = current_stochrsi_k < current_stochrsi_d and current_stochrsi_k > overbought_threshold
+        buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold 
 
         # update data for execution of order
-        global stoch_rsi_sell
-        global stoch_rsi_buy
-        stoch_rsi_sell[symbol] = sell
-        stoch_rsi_buy[symbol] = buy
+        global stochrsi_sell
+        global stochrsi_buy
+        stochrsi_sell[symbol] = sell
+        stochrsi_buy[symbol] = buy
 
-        df['stoch_rsi_sell'] = stoch_rsi_sell
-        df['stoch_rsi_buy'] = stoch_rsi_buy
+        df['stochrsi_sell'] = sell
+        df['stochrsi_buy'] = buy
 
-        print(f'\n----------- {symbol} Stoch RSI Signal Analysis (5 minutes) --------------')
+        print(f'\n----------- {symbol} Stochrsi Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

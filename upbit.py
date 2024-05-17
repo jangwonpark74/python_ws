@@ -30,8 +30,8 @@ mfi_1d = defaultdict(float)
 
 # MFI high low threshold
 
-mfi_high_threshold = 85
-mfi_low_threshold = 15 
+mfi_high_threshold = 80 
+mfi_low_threshold = 20 
 
 # Define parameters for Stochastic RSI
 stoch_rsi_period = 14

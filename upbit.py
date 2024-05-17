@@ -138,14 +138,6 @@ def analyze_supertrend(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-
-        # Reference 
-        # https://youtu.be/HpNZ2VpZzSE?si=gNjCwWVbaAJZCyBU
-
-        # supertrend slow  @ 12, hl2, 3 
-        # supertrend mid   @ 11, hl2, 2
-        # supertrend fast  @ 10, hl2, 1
-
         period = 14
         multiplier = 2.0
 

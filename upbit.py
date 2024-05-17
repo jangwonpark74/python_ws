@@ -249,7 +249,7 @@ def analyze_signals_3m(exchange, symbol: str)->None:
         df['stoch_rsi_k'] = stoch_rsi_k
         df['stoch_rsi_d'] = stoch_rsi_d
 
-        lastest = df.iloc[-1]
+        latest = df.iloc[-1]
         previous = df.iloc[-2]
 
         stoch_rsi_sell = previous['stoch_rsi_k'] > 80 and previous['stoch_rsi_d'] > 80 and latest['stoch_rsi_k'] < 80 and latest['stoch_rsi_d'] < 80

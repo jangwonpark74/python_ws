@@ -53,7 +53,7 @@ supertrend_up = defaultdict(bool)
 supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
-# supertrend buy amount at every 4 hour
+# supertrend buy amount at every 2 hour
 supertrend_buy_amount = 1000000
 
 # supertrend sell one time 
@@ -600,8 +600,8 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
@@ -615,8 +615,8 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, xrp)
     schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
@@ -630,8 +630,8 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, sol)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, sol)
     schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, sol)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, sol)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
@@ -645,8 +645,8 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, btc)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, btc)
     schedule.every(5).minutes.do(execute_stochrsi_sell, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
@@ -660,8 +660,8 @@ if __name__=='__main__':
     schedule.every(3).minutes.do(execute_scalping_sell, exchange, eth)
     schedule.every(5).minutes.do(execute_scalping_buy, exchange, eth)
     schedule.every(5).minutes.do(execute_scalping_sell, exchange, eth)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, eth)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, eth)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, eth)
+    schedule.every(2).hours.do(execute_supertrend_buy, exchange, eth)
 
     schedule.every(30).seconds.do(monitor, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)

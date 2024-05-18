@@ -370,7 +370,7 @@ def stochrsi_15m_sell_coin(exchange, symbol: str):
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi 3 minutes Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Stochrsi 15 minutes Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

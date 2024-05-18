@@ -4,6 +4,8 @@ import time
 import schedule
 import pandas as pd
 import logging 
+import time
+from datetime import datetime 
 
 from conf import key
 from pprint import pprint
@@ -35,7 +37,7 @@ mfi_1d = defaultdict(float)
 
 # MFI high low threshold
 mfi_high_threshold = 80
-mfi_low_threshold = 20
+mfi_low_threshold = 23
 
 # Define parameters for Stochastic RSI
 overbought_threshold = 80
@@ -409,10 +411,6 @@ def stochrsi_30m_sell_coin(exchange, symbol: str):
 
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((stochrsi_30m_sell_amount)/price, 3)
-
-        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-            return
 
         print("\n------------ Execute stochrsi sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')

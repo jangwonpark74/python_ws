@@ -52,6 +52,11 @@ stochrsi_30m_buy = defaultdict(bool)
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
 
+# Price for hysterisys 
+last_buy_price = defaultdict(float)
+
+hysterisys_threshold = 0.015
+
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)
 
@@ -336,6 +341,10 @@ def sell_coin(exchange, symbol: str):
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((bb_trading_amount)/ price, 5)
 
+        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+            return
+
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} price : {price}, sell amount = {amount}')  
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
@@ -354,6 +363,10 @@ def scalping_sell_coin(exchange, symbol: str):
 
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
+
+        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+            return
 
         print("\n------------ Execute scalping sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')  
@@ -374,6 +387,10 @@ def stochrsi_3m_sell_coin(exchange, symbol: str):
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
 
+        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+            return
+
         print("\n------------ Execute stochrsi sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
@@ -392,6 +409,10 @@ def stochrsi_30m_sell_coin(exchange, symbol: str):
 
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((stochrsi_30m_sell_amount)/price, 3)
+
+        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+            return
 
         print("\n------------ Execute stochrsi sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')
@@ -426,6 +447,9 @@ def buy_coin(exchange,symbol: str)->None:
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
 
+        # memorizing for histerisys 
+        last_buy_price[symbol] = price
+
         logging.info(f"Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -452,6 +476,9 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+
+        # memorizing for histerisys 
+        last_buy_price[symbol] = price
 
         logging.info(f"Scalping Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -480,6 +507,9 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+        
+        # memorizing for histerisys 
+        last_buy_price[symbol] = price
 
         logging.info(f"Stochrsi 3 minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -507,6 +537,9 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+
+        # memorizing for histerisys 
+        last_buy_price[symbol] = price
 
         logging.info(f"Stochrsi 30 Minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -566,6 +599,10 @@ def supertrend_buy_coin(exchange, symbol: str):
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
+
+        # memorizing for histerisys 
+        last_buy_price[symbol] = price
+
         logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:

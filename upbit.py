@@ -439,6 +439,7 @@ def buy_coin(exchange,symbol: str)->None:
         if free_KRW > (bb_trading_amount ):
             amount = (bb_trading_amount) 
         else:
+            logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
             return
 
@@ -469,6 +470,7 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (scalping_buy_amount ):
             amount = (scalping_buy_amount) 
         else:
+            logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
             return
 
@@ -500,6 +502,7 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (scalping_buy_amount ):
             amount = (scalping_buy_amount) 
         else:
+            logging.info(f"Cancel strochrsi 3m buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
             return
 
@@ -530,6 +533,7 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (stochrsi_30m_buy_amount ):
             amount = (stochrsi_30m_buy_amount) 
         else:
+            logging.info(f"Cancel strochrsi 30m buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
             return
 
@@ -592,6 +596,7 @@ def supertrend_buy_coin(exchange, symbol: str):
         if free_KRW > (supertrend_buy_amount ):
             amount = (supertrend_buy_amount) 
         else:
+            logging.info(f"Cancel supertrend buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
             return
 

@@ -41,7 +41,7 @@ mfi_low_threshold = 23
 
 # Define parameters for Stochastic RSI
 overbought_threshold = 80
-oversold_threshold = 20
+oversold_threshold = 23 
 
 # Stoch RSI sell buy every 3 minutes
 stochrsi_3m_sell = defaultdict(bool)
@@ -53,24 +53,6 @@ stochrsi_30m_buy = defaultdict(bool)
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)
-
-# Price for hysterisys 
-last_buy_price = defaultdict(float)
-
-hysterisys_threshold = 0.015
-
-# Average Buy Price for hysterisys : Todo
-average_buy_price = defaultdict(float)
-
-# Same Market buy and sell time hysterisys
-last_buy_timestamp = defaultdict(float)
-
-# 600 seconds hysterisys threshold 
-timestamp_hysterisys_threshold = 600
-
-# if time lapsed more than 1 hour (600 seconds) since last buy
-# the sell price hysterisys can be unlocked 
-timestamp_threshold_for_unlock = 600 
 
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)
@@ -89,8 +71,7 @@ supertrend_buy_amount = 2000000
 supertrend_sell_quota = defaultdict(float) 
 supertrend_sell_amount = defaultdict(float)
 
-pd.set_option('display.max_rows', None)
-
+#pd.set_option('display.max_rows', None)
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
@@ -127,7 +108,7 @@ def analyze_signals_1d(exchange, symbol: str)->None:
         df_1d['bollinger_upper'] = round(df_1d['bollinger_upper'], 1)
         df_1d['bollinger_middle']= round(df_1d['bollinger_middle'], 1)
         df_1d['bollinger_lower'] = round(df_1d['bollinger_lower'], 1)
-
+    
         print(f'\n----------------------- {symbol} Signal Analysis ( 1 day ) -----------------------------')
         pprint(df_1d.iloc[-1])
 
@@ -347,39 +328,18 @@ def analyze_signals_3m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def sell_coin(exchange, symbol: str):
-    try:
+def show_orderbook(orderbook):
         print("\n------------Getting order book -----------")
-        orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
+def sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((bb_trading_amount)/ price, 5)
-
-        # time hysterisys for unlock
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_timestamp = last_buy_timestamp[symbol]
-        diff = timestamp - last_timestamp
-
-        if diff <= timestamp_threshold_for_unlock:
-            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-                return
-
-        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-            return
-
-        if (diff  < timestamp_hysterisys_threshold):
-            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
-            return 
-
-        print("\n------------ Make a sell order-----------")
-        print(f'{symbol} price : {price}, sell amount = {amount}')  
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
-        pprint(resp)
 
+        show_orderbook(orderbook)
         logging.info(f"Bollinger Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -387,33 +347,12 @@ def sell_coin(exchange, symbol: str):
 
 def scalping_sell_coin(exchange, symbol: str):
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
+        resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        # time hysterisys
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_timestamp = last_buy_timestamp[symbol]
-        diff = timestamp - last_timestamp
-
-        if diff <= timestamp_threshold_for_unlock:
-            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-                return
-
-        if (diff  < timestamp_hysterisys_threshold):
-            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
-            return 
-
-        print("\n------------ Execute scalping sell -----------")
-        print(f'{symbol} price : {price}, scalping sell amount = {amount}')  
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
-        pprint(resp)
-
+        show_orderbook(orderbook)
         logging.info(f"MFI Scalping Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -421,33 +360,12 @@ def scalping_sell_coin(exchange, symbol: str):
 
 def stochrsi_3m_sell_coin(exchange, symbol: str):
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        # time hysterisys for unlock
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_timestamp = last_buy_timestamp[symbol]
-        diff = timestamp - last_timestamp
-
-        if diff <= timestamp_threshold_for_unlock:
-            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-                return
-
-        if (diff  < timestamp_hysterisys_threshold):
-            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
-            return 
-
-        print("\n------------ Execute stochrsi sell -----------")
-        print(f'{symbol} price : {price}, scalping sell amount = {amount}')
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
-        pprint(resp)
-
+        show_orderbook(orderbook)
         logging.info(f"Stochrsi 3 minutes Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -455,18 +373,12 @@ def stochrsi_3m_sell_coin(exchange, symbol: str):
 
 def stochrsi_30m_sell_coin(exchange, symbol: str):
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((stochrsi_30m_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        print("\n------------ Execute stochrsi sell -----------")
-        print(f'{symbol} price : {price}, scalping sell amount = {amount}')
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
-        pprint(resp)
-
+        show_orderbook(orderbook)
         logging.info(f"Stochrsi 30 Minutes Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -475,16 +387,7 @@ def stochrsi_30m_sell_coin(exchange, symbol: str):
 
 def buy_coin(exchange,symbol: str)->None:
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round(orderbook['asks'][0][0], 1)
-
-        # Memorize the last buy condition
-        global last_buy_price
-        last_buy_price[symbol] = price
-
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
@@ -492,20 +395,13 @@ def buy_coin(exchange,symbol: str)->None:
             amount = (bb_trading_amount)
         else:
             logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
-            print("------- Cancel buy for low balance ------------")
             return
 
-        print("\n------------ Make a buy order -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
-        pprint(resp)
 
-        # memorize timestamp for time hysterisys
-        global last_buy_timestamp 
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_buy_timestamp[symbol] = timestamp
-
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
         logging.info(f"Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -513,16 +409,7 @@ def buy_coin(exchange,symbol: str)->None:
 
 def scalping_buy_coin(exchange,symbol: str)->None:
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round(orderbook['asks'][0][0], 1)
-        
-        # Memorize the last buy condition
-        global last_buy_price
-        last_buy_price[symbol] = price
-
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
@@ -530,20 +417,13 @@ def scalping_buy_coin(exchange,symbol: str)->None:
             amount = (scalping_buy_amount) 
         else:
             logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
-            print("------- Cancel buy for low balance ------------")
             return
 
-        print("\n------------ Excute scalping buy -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
-        pprint(resp)
-
-        # memorize timestamp for time hysterisys
-        global last_buy_timestamp 
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_buy_timestamp[symbol] = timestamp
-
+        
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
         logging.info(f"Scalping Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -552,15 +432,7 @@ def scalping_buy_coin(exchange,symbol: str)->None:
 
 def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round(orderbook['asks'][0][0], 1)
-
-        # Memorize the last buy condition
-        global last_buy_price
-        last_buy_price[symbol] = price
 
         amount = 0.0
         free_KRW = exchange.fetchBalance()['KRW']['free']
@@ -569,20 +441,13 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
             amount = (scalping_buy_amount) 
         else:
             logging.info(f"Cancel strochrsi 3m buy for low balance {symbol} free KRW = {free_KRW}")
-            print("------- Cancel buy for low balance ------------")
             return
 
-        print("\n------------ Excute stochrsi buy -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
-        pprint(resp)
-        
-        # memorize timestamp for time hysterisys
-        global last_buy_timestamp 
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_buy_timestamp[symbol] = timestamp
 
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
         logging.info(f"Stochrsi 3 minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -590,16 +455,7 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
 
 def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round(orderbook['asks'][0][0], 1)
-
-        # Memorize the last buy condition
-        global last_buy_price
-        last_buy_price[symbol] = price
-
         amount = 0.0
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
@@ -607,20 +463,13 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
             amount = (stochrsi_30m_buy_amount) 
         else:
             logging.info(f"Cancel strochrsi 30m buy for low balance {symbol} free KRW = {free_KRW}")
-            print("------- Cancel buy for low balance ------------")
             return
-
-        print("\n------------ Excute stochrsi buy -----------")
+        
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
-        pprint(resp)
-
-        # memorize timestamp for time hysterisys
-        global last_buy_timestamp 
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_buy_timestamp[symbol] = timestamp
-
+        
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
         logging.info(f"Stochrsi 30 Minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -634,18 +483,12 @@ def supertrend_sell_update(symbol: str):
  
 def supertrend_sell_coin(exchange, symbol: str):
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((supertrend_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        print("\n------------ Execute scalping sell -----------")
-        print(f'{symbol} price : {price}, supertrend sell amount = {amount}')
-        resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
-        pprint(resp)
-        
+        show_orderbook(orderbook)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
         global supertrend_sell_iter 
@@ -662,37 +505,21 @@ def supertrend_sell_coin(exchange, symbol: str):
 
 def supertrend_buy_coin(exchange, symbol: str):
     try:
-        print("\n------------Getting order book -----------")
         orderbook = exchange.fetch_order_book(symbol)
-        pprint(orderbook)
-
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-
-        # Memorize the last buy condition
-        global last_buy_price
-        last_buy_price[symbol] = price
-
-        free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
+        free_KRW = exchange.fetchBalance()['KRW']['free']
         if free_KRW > (supertrend_buy_amount ):
             amount = (supertrend_buy_amount) 
         else:
             logging.info(f"Cancel supertrend buy for low balance {symbol} free KRW = {free_KRW}")
-            print("------- Cancel buy for low balance ------------")
             return
 
-        print("\n------------ Excute supertrend buy -----------")
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
-        pprint(resp)
 
-        # memorize timestamp for time hysterisys
-        global last_buy_timestamp 
-        now = datetime.now()
-        timestamp = now.timestamp()
-        last_buy_timestamp[symbol] = timestamp
-
+        show_orderbook(orderbook)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -761,15 +588,6 @@ def execute_supertrend_buy(exchange, symbol:str):
     if buy:
         supertrend_buy_coin(exchange, symbol)
 
-def init_last_buy_timestamp(symbols):
-    
-    global last_buy_timestamp 
-    now = datetime.now()
-    timestamp = now.timestamp()
-
-    for symbol in symbols:
-        last_buy_timestamp[symbol] = timestamp
-
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
@@ -813,7 +631,6 @@ if __name__=='__main__':
 
     symbols= [doge, xrp, sol, btc, eth]
     init_supertrend_quota(symbols)
-    init_last_buy_timestamp(symbols)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)

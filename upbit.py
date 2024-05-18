@@ -59,11 +59,18 @@ last_buy_price = defaultdict(float)
 
 hysterisys_threshold = 0.015
 
+# Average Buy Price for hysterisys : Todo
+average_buy_price = defaultdict(float)
+
 # Same Market buy and sell time hysterisys
 last_buy_timestamp = defaultdict(float)
 
 # 600 seconds hysterisys threshold 
 timestamp_hysterisys_threshold = 600
+
+# if time lapsed more than 1 hour (600 seconds) since last buy
+# the sell price hysterisys can be unlocked 
+timestamp_threshold_for_unlock = 600 
 
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)
@@ -349,15 +356,20 @@ def sell_coin(exchange, symbol: str):
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((bb_trading_amount)/ price, 5)
 
-        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-            return
-        
-        # time hysterisys
+        # time hysterisys for unlock
         now = datetime.now()
         timestamp = now.timestamp()
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
+
+        if diff <= timestamp_threshold_for_unlock:
+            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+                return
+
+        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+            return
 
         if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
@@ -382,15 +394,16 @@ def scalping_sell_coin(exchange, symbol: str):
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
 
-        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-            return
-
         # time hysterisys
         now = datetime.now()
         timestamp = now.timestamp()
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
+
+        if diff <= timestamp_threshold_for_unlock:
+            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+                return
 
         if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
@@ -415,15 +428,16 @@ def stochrsi_3m_sell_coin(exchange, symbol: str):
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((scalping_sell_amount)/price, 3)
 
-        if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
-            logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
-            return
-
-        # time hysterisys
+        # time hysterisys for unlock
         now = datetime.now()
         timestamp = now.timestamp()
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
+
+        if diff <= timestamp_threshold_for_unlock:
+            if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
+                logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
+                return
 
         if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")

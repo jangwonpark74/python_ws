@@ -755,6 +755,14 @@ def execute_supertrend_buy(exchange, symbol:str):
     if buy:
         supertrend_buy_coin(exchange, symbol)
 
+def init_last_buy_timestamp(symbols):
+    
+    global last_buy_timestamp 
+    now = datetime.now()
+    timestamp = now.timestamp()
+
+    for symbol in symbols:
+        last_buy_timestamp[symbol] = timestamp
 
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -799,6 +807,7 @@ if __name__=='__main__':
 
     symbols= [doge, xrp, sol, btc, eth]
     init_supertrend_quota(symbols)
+    init_last_buy_timestamp(symbols)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)

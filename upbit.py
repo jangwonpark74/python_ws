@@ -261,7 +261,7 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['stochrsi_sell'] = sell
         df['stochrsi_buy'] = buy
 
-        print(f'\n----------- {symbol} Stochrsi Signal Analysis (15 minutes) --------------')
+        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (15 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -474,7 +474,7 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"STOCHRSI 30 minutes bBuy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI 30 minutes buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -482,8 +482,7 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
 
 def supertrend_sell_update(symbol: str):
     global supertrend_sell_amount
-    supertrend_sell_amount[symbol] = supertrend_sell_quota[symbol]/ pow(1.5, supertrend_sell_iter[symbol])
-    
+    supertrend_sell_amount[symbol] = supertrend_sell_quota[symbol] / pow(1.5, supertrend_sell_iter[symbol])
  
 def supertrend_sell_coin(exchange, symbol: str):
     try:
@@ -512,6 +511,7 @@ def supertrend_buy_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
 
         amount = 0.0
+
         free_KRW = exchange.fetchBalance()['KRW']['free']
         if free_KRW > (supertrend_buy_amount ):
             amount = (supertrend_buy_amount) 
@@ -531,8 +531,8 @@ def supertrend_buy_coin(exchange, symbol: str):
 
 def execute_order(exchange, symbol: str)->None:
     
-    sell   = sell_order[symbol]
-    buy    = buy_order[symbol]
+    sell = sell_order[symbol]
+    buy  = buy_order[symbol]
 
     if buy:
        buy_coin(exchange, symbol)
@@ -541,41 +541,42 @@ def execute_order(exchange, symbol: str)->None:
 
     global iterations
     iterations[symbol] = iterations[symbol] + 1
+
     if (iterations[symbol] % 15 == 0):
        reset_sell_buy_order(symbol)
 
 def execute_mfi_scalping_buy(exchange, symbol: str)->None:
-    sell   = scalping_sell[symbol] 
+    sell = scalping_sell[symbol] 
 
     if sell:
        mfi_scalping_sell_coin(exchange, symbol)
 
 def execute_mfi_scapling_sell(exchange, symbol: str)->None:
-    buy    = scalping_buy[symbol]
+    buy = scalping_buy[symbol]
 
     if buy:
         mfi_scalping_buy_coin(exchange, symbol)
 
 def execute_stochrsi_15m_buy(exchange, symbol: str)->None:
-    sell   = stochrsi_15m_sell[symbol] 
+    sell = stochrsi_15m_sell[symbol] 
 
     if sell:
        stochrsi_15m_sell_coin(exchange, symbol)
 
 def execute_stochrsi_15m_sell(exchange, symbol: str)->None:
-    buy    = stochrsi_15m_buy[symbol]
+    buy = stochrsi_15m_buy[symbol]
 
     if buy:
         stochrsi_15m_buy_coin(exchange, symbol)
 
 def execute_stochrsi_30m_buy(exchange, symbol: str)->None:
-    sell   = stochrsi_30m_sell[symbol] 
+    sell = stochrsi_30m_sell[symbol] 
 
     if sell:
        stochrsi_30m_sell_coin(exchange, symbol)
 
 def execute_stochrsi_30m_sell(exchange, symbol: str)->None:
-    buy    = stochrsi_30m_buy[symbol]
+    buy = stochrsi_30m_buy[symbol]
 
     if buy:
         stochrsi_30m_buy_coin(exchange, symbol)

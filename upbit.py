@@ -62,7 +62,8 @@ hysterisys_threshold = 0.015
 # Same Market buy and sell time hysterisys
 last_buy_timestampstamp = defaultdict(float)
 
-timestamp_hysterisys_threshold = 600  (600 seconds)
+# 600 seconds hysterisys threshold 
+timestamp_hysterisys_threshold = 600
 
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)

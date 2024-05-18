@@ -59,6 +59,11 @@ last_buy_price = defaultdict(float)
 
 hysterisys_threshold = 0.015
 
+# Same Market buy and sell time hysterisys
+last_buy_timestampstamp = defaultdict(float)
+
+timestamp_hysterisys = 600  (600 seconds)
+
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)
 
@@ -346,6 +351,16 @@ def sell_coin(exchange, symbol: str):
         if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
             logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
             return
+        
+        # time hysterisys
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_timestamp = last_buy_timestamp[symbol]
+        diff = timestamp - last_timestamp
+
+        if (diff  < timestamp_threshold):
+            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
+            return 
 
         print("\n------------ Make a sell order-----------")
         print(f'{symbol} price : {price}, sell amount = {amount}')  
@@ -370,6 +385,16 @@ def scalping_sell_coin(exchange, symbol: str):
             logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
             return
 
+        # time hysterisys
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_timestamp = last_buy_timestamp[symbol]
+        diff = timestamp - last_timestamp
+
+        if (diff  < timestamp_threshold):
+            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
+            return 
+
         print("\n------------ Execute scalping sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')  
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
@@ -392,6 +417,16 @@ def stochrsi_3m_sell_coin(exchange, symbol: str):
         if price  < ((1 + hysterisys_threshold) * last_buy_price[symbol]):
             logging.info(f"Cancel sell for hysterishys {symbol} at price: {price}, last_price = {last_buy_price[symbol]}")
             return
+
+        # time hysterisys
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_timestamp = last_buy_timestamp[symbol]
+        diff = timestamp - last_timestamp
+
+        if (diff  < timestamp_threshold):
+            logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
+            return 
 
         print("\n------------ Execute stochrsi sell -----------")
         print(f'{symbol} price : {price}, scalping sell amount = {amount}')
@@ -449,6 +484,13 @@ def buy_coin(exchange,symbol: str)->None:
         # memorizing for histerisys 
         last_buy_price[symbol] = price
 
+
+        # memorize timestamp for time hysterisys
+        global last_buy_timestamp 
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_buy_timestamp[symbol] = timestamp
+
         logging.info(f"Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
@@ -479,6 +521,12 @@ def scalping_buy_coin(exchange,symbol: str)->None:
 
         # memorizing for histerisys 
         last_buy_price[symbol] = price
+
+        # memorize timestamp for time hysterisys
+        global last_buy_timestamp 
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_buy_timestamp[symbol] = timestamp
 
         logging.info(f"Scalping Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -511,6 +559,12 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
         
         # memorizing for histerisys 
         last_buy_price[symbol] = price
+        
+        # memorize timestamp for time hysterisys
+        global last_buy_timestamp 
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_buy_timestamp[symbol] = timestamp
 
         logging.info(f"Stochrsi 3 minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -542,6 +596,12 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
 
         # memorizing for histerisys 
         last_buy_price[symbol] = price
+        
+        # memorize timestamp for time hysterisys
+        global last_buy_timestamp 
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_buy_timestamp[symbol] = timestamp
 
         logging.info(f"Stochrsi 30 Minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
@@ -605,6 +665,12 @@ def supertrend_buy_coin(exchange, symbol: str):
 
         # memorizing for histerisys 
         last_buy_price[symbol] = price
+        
+        # memorize timestamp for time hysterisys
+        global last_buy_timestamp 
+        now = datetime.now()
+        timestamp = now.timestamp()
+        last_buy_timestamp[symbol] = timestamp
 
         logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
 

@@ -62,7 +62,7 @@ hysterisys_threshold = 0.015
 # Same Market buy and sell time hysterisys
 last_buy_timestampstamp = defaultdict(float)
 
-timestamp_hysterisys = 600  (600 seconds)
+timestamp_hysterisys_threshold = 600  (600 seconds)
 
 # Global variable to keep supertrend sell count
 supertrend_sell_iter = defaultdict(int)
@@ -358,7 +358,7 @@ def sell_coin(exchange, symbol: str):
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
 
-        if (diff  < timestamp_threshold):
+        if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
             return 
 
@@ -391,7 +391,7 @@ def scalping_sell_coin(exchange, symbol: str):
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
 
-        if (diff  < timestamp_threshold):
+        if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
             return 
 
@@ -424,7 +424,7 @@ def stochrsi_3m_sell_coin(exchange, symbol: str):
         last_timestamp = last_buy_timestamp[symbol]
         diff = timestamp - last_timestamp
 
-        if (diff  < timestamp_threshold):
+        if (diff  < timestamp_hysterisys_threshold):
             logging.info(f"Cancell cell(too early) {symbol} at price: {price}, amount = {amount}")
             return 
 

@@ -481,11 +481,15 @@ def buy_coin(exchange,symbol: str)->None:
 
         price = round(orderbook['asks'][0][0], 1)
 
+        # Memorize the last buy condition
+        global last_buy_price
+        last_buy_price[symbol] = price
+
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
         if free_KRW > (bb_trading_amount ):
-            amount = (bb_trading_amount) 
+            amount = (bb_trading_amount)
         else:
             logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
             print("------- Cancel buy for low balance ------------")
@@ -495,10 +499,6 @@ def buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
-
-        # memorizing for histerisys 
-        last_buy_price[symbol] = price
-
 
         # memorize timestamp for time hysterisys
         global last_buy_timestamp 
@@ -518,6 +518,10 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         pprint(orderbook)
 
         price = round(orderbook['asks'][0][0], 1)
+        
+        # Memorize the last buy condition
+        global last_buy_price
+        last_buy_price[symbol] = price
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
@@ -533,9 +537,6 @@ def scalping_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
-
-        # memorizing for histerisys 
-        last_buy_price[symbol] = price
 
         # memorize timestamp for time hysterisys
         global last_buy_timestamp 
@@ -557,9 +558,13 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
 
         price = round(orderbook['asks'][0][0], 1)
 
-        free_KRW = exchange.fetchBalance()['KRW']['free']
+        # Memorize the last buy condition
+        global last_buy_price
+        last_buy_price[symbol] = price
 
         amount = 0.0
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
         if free_KRW > (scalping_buy_amount ):
             amount = (scalping_buy_amount) 
         else:
@@ -571,9 +576,6 @@ def stochrsi_3m_buy_coin(exchange,symbol: str)->None:
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
-        
-        # memorizing for histerisys 
-        last_buy_price[symbol] = price
         
         # memorize timestamp for time hysterisys
         global last_buy_timestamp 
@@ -594,9 +596,13 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
 
         price = round(orderbook['asks'][0][0], 1)
 
-        free_KRW = exchange.fetchBalance()['KRW']['free']
+        # Memorize the last buy condition
+        global last_buy_price
+        last_buy_price[symbol] = price
 
         amount = 0.0
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
         if free_KRW > (stochrsi_30m_buy_amount ):
             amount = (stochrsi_30m_buy_amount) 
         else:
@@ -609,9 +615,6 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
 
-        # memorizing for histerisys 
-        last_buy_price[symbol] = price
-        
         # memorize timestamp for time hysterisys
         global last_buy_timestamp 
         now = datetime.now()
@@ -635,11 +638,11 @@ def supertrend_sell_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
-        avg_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((supertrend_sell_amount)/avg_price, 3)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((supertrend_sell_amount)/price, 3)
 
         print("\n------------ Execute scalping sell -----------")
-        print(f'{symbol} average price : {avg_price}, supertrend sell amount = {amount}')  
+        print(f'{symbol} price : {price}, supertrend sell amount = {amount}')
         resp =exchange.create_market_sell_order(symbol=symbol, amount = amount )
         pprint(resp)
         
@@ -663,6 +666,12 @@ def supertrend_buy_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
         pprint(orderbook)
 
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+
+        # Memorize the last buy condition
+        global last_buy_price
+        last_buy_price[symbol] = price
+
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         amount = 0.0
@@ -678,9 +687,6 @@ def supertrend_buy_coin(exchange, symbol: str):
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
         pprint(resp)
 
-        # memorizing for histerisys 
-        last_buy_price[symbol] = price
-        
         # memorize timestamp for time hysterisys
         global last_buy_timestamp 
         now = datetime.now()

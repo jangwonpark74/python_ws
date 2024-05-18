@@ -5,11 +5,12 @@ import schedule
 import pandas as pd
 import logging 
 import time
-from datetime import datetime 
 
-from conf import key
 from pprint import pprint
 from collections import defaultdict
+
+from conf import key
+from conf import binance_key
 
 # Bollinger band buy/sell order 
 buy_order = defaultdict(bool)
@@ -73,18 +74,6 @@ supertrend_sell_amount = defaultdict(float)
 
 #pd.set_option('display.max_rows', None)
 
-def init_upbit():
-    print('\n-----------------Upbit Exchange Initialization-------------------------')
-    print(f'Initialized CCXT with version : {ccxt.__version__}')
-    exchange = ccxt.upbit(config={
-            'apiKey':key['accessKey'],
-            'secret':key['secret'],
-            'timeout':15000,
-            'enableRateLimit': True,
-        }
-    )
-    return exchange
-
 def reset_sell_buy_order(symbol: str):
     global sell_order
     global buy_order
@@ -94,6 +83,21 @@ def reset_sell_buy_order(symbol: str):
 def calc_volatility(x: float) -> float:
     volatility = round(-0.0012 * x * x + 0.12 * x +0.5, 2)
     return volatility
+
+
+def analyze_historical_data(exchange, symbol:str):
+    try:
+        from_ts = exchange.parse8601('2021-01-01 00:00:00')
+        ohlcv_list = []
+        ohlcv = exchange.fetch_ohlcv(symbol, '15m', since=from_ts, limit=1000)
+        ohlcv_list.append(ohlcv)
+        while True:
+            from_ts = ohlcv[-1][0]
+            new_ohlcv = exchange.fetch_ohlcv(symbol,'15m', since=from_ts, limit=1000)
+            if len(new_ohlcv) != 1000:
+                break
+    except Exception as e:
+        print("Exception : ", str(e))
 
 def analyze_signals_1d(exchange, symbol: str)->None:
     try:
@@ -607,6 +611,67 @@ def monitor_balance(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
+def analyze_covariance(exchange, currencies)->None:
+    try:
+        print("------------- analyze covariance------------")
+
+        daily_price = pd.DataFrame()
+        daily_return = pd.DataFrame()
+        annual_return = pd.DataFrame()
+
+        for symbol in currencies:
+
+            ohlcv = exchange.fetch_ohlcv(symbol=symbol, timeframe='1d')
+            df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+            daily_price[symbol]= df['close']
+            daily_return[symbol] = daily_price[symbol].pct_change()
+
+        annual_return = daily_return.mean() * 365
+
+        print("\n---------------daily return -------------")
+        pprint(daily_return)
+        print("\n---------------daily covariance -------------")
+        daily_cov = daily_return.cov()
+        pprint(daily_cov)
+        print("\n---------------annual return -------------")
+        pprint(annual_return)
+
+        print("\n-------------- annual convariance -----------")
+        annual_cov = daily_cov*365
+
+        pprint(annual_cov) 
+
+        portfolio_return =[]
+        portfolio_risk = []
+        portfolio_weights = []
+
+        for _ in range(20000):
+            weights = np.random.random(len(currencies))
+            weights /= np.sum(weights)
+
+            returns = np.dot(weights, annual_return)
+            risk = np.sqrt(np.dot(weights.T, np.dot(annual_cov, weights)))
+
+            portfolio_return.append(returns)
+            portfolio_risk.append(risk)
+            portfolio_weights.append(weights)
+
+        
+        portfolio = {'Returns': portfolio_return, 'Risk': portfolio_risk}
+        for i, s in enumerate(currencies):
+            portfolio[s] = [weight[i] for weight in portfolio_weights]
+
+        df = pd.DataFrame(portfolio)
+        df - df[['Returns', 'Risk'] + [s for s in currencies]]
+
+        pprint(df)
+
+        df.plot.scatter(x = 'Risk', y ='Returns', figsize=(9, 8), grid=True)
+        plt.title("Efficient Frontier")
+        plt.show()
+
+    except Exception as e:
+        print("Exception: ", str(e))
 
 def init_supertrend_quota(symbols):
 
@@ -615,12 +680,35 @@ def init_supertrend_quota(symbols):
     for x in symbols:
         supertrend_sell_quota[x]= 4000000
 
+def init_upbit():
+    print('\n-----------------Upbit Exchange Initialization-------------------------')
+    print(f'Initialized CCXT with version : {ccxt.__version__}')
+    exchange = ccxt.upbit(config={
+            'apiKey':key['accessKey'],
+            'secret':key['secret'],
+            'timeout':15000,
+            'enableRateLimit': True,
+        }
+    )
+    return exchange
+
+def init_binance():
+    print('\n---------------Binance Exchange Initilization-------------------------')
+    exchange = ccxt.binance(config={
+            'apiKey':binance_key['apiKey'],
+            'secret':binance_key['secret'],
+            'enableRateLimit': True,
+    })
+    return exchange
+
+
 if __name__=='__main__':
 
     # Configure logging
     logging.basicConfig(filename="./trading.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     exchange = init_upbit()
+    binance = init_binance()
 
     #define symbols 
     doge = "DOGE/KRW"

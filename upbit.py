@@ -24,8 +24,8 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 1000000
 
 # 15 minute MFI and RSI analysis based scalping amount 
-mfi_scalping_sell_amount = 2000000
-mfi_scalping_buy_amount  = 2000000
+mfi_scalping_sell_amount = 5000000
+mfi_scalping_buy_amount  = 5000000
 
 # 30m stochrsi amount 
 stochrsi_30m_sell_amount = 3000000

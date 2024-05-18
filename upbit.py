@@ -60,7 +60,7 @@ last_buy_price = defaultdict(float)
 hysterisys_threshold = 0.015
 
 # Same Market buy and sell time hysterisys
-last_buy_timestampstamp = defaultdict(float)
+last_buy_timestamp = defaultdict(float)
 
 # 600 seconds hysterisys threshold 
 timestamp_hysterisys_threshold = 600

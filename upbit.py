@@ -21,7 +21,7 @@ scalping_buy = defaultdict(bool)
 scalping_sell= defaultdict(bool)
 
 # Bollinger band analysis based buy, sell amount
-bb_trading_amount = 1000000
+bb_trading_amount = 2000000
 
 # 15 minute MFI and RSI analysis based scalping amount 
 mfi_scalping_sell_amount = 5000000
@@ -344,7 +344,7 @@ def sell_coin(exchange, symbol: str):
         resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Bollinger Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Bollinger sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -357,7 +357,7 @@ def mfi_scalping_sell_coin(exchange, symbol: str):
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"MFI Scalping Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -398,7 +398,7 @@ def buy_coin(exchange,symbol: str)->None:
         if free_KRW > (bb_trading_amount ):
             amount = (bb_trading_amount)
         else:
-            logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel bollinger buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -406,7 +406,7 @@ def buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Bollinger buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -420,7 +420,7 @@ def mfi_scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (mfi_scalping_buy_amount ):
             amount = (mfi_scalping_buy_amount) 
         else:
-            logging.info(f"Cancel BB buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel MFI buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -428,7 +428,7 @@ def mfi_scalping_buy_coin(exchange,symbol: str)->None:
         
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Scalping Buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -444,7 +444,7 @@ def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (mfi_scalping_buy_amount ):
             amount = (mfi_scalping_buy_amount) 
         else:
-            logging.info(f"Cancel strochrsi 3m buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel STOCHRSI 15 minutes buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -452,7 +452,7 @@ def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Stochrsi 15 minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI 15 minutes buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -466,7 +466,7 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (stochrsi_30m_buy_amount ):
             amount = (stochrsi_30m_buy_amount) 
         else:
-            logging.info(f"Cancel strochrsi 30m buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel strochrsi 30 minutes buy for low balance {symbol} free KRW = {free_KRW}")
             return
         
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -474,7 +474,7 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
         
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Stochrsi 30 Minutes Buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI 30 minutes bBuy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -493,7 +493,7 @@ def supertrend_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Supertrend sell order placed for {symbol} at price: {price}, amount = {amount}")
 
         global supertrend_sell_iter 
         supertrend_sell_iter[symbol] = supertrend_sell_iter[symbol] + 1
@@ -524,7 +524,7 @@ def supertrend_buy_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Supertrend buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

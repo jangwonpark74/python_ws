@@ -23,22 +23,25 @@ scalping_sell= defaultdict(bool)
 # Bollinger band analysis based buy, sell amount
 bb_trading_amount = 2000000
 
-# 15 minute MFI and RSI analysis based scalping amount 
-mfi_scalping_sell_amount = 5000000
-mfi_scalping_buy_amount  = 5000000
+# MFI 33 scalping amount 
+mfi_scalping_sell_amount = 2000000
+mfi_scalping_buy_amount  = 2000000
 
 # 30m stochrsi amount 
 stochrsi_30m_sell_amount = 3000000
 stochrsi_30m_buy_amount  = 3000000
 
+# MFI 3 minutes for scalping
+mfi_3m = defaultdict(float)
+
 # MFI 4 hour for volatility analysis
-mfi_15m = defaultdict(float)
 mfi_4h = defaultdict(float)
 mfi_1d = defaultdict(float)
 
 # MFI high low threshold
 mfi_high_threshold = 80
-mfi_low_threshold = 23
+mfi_low_threshold = 25
+rsi_low_threshold = 25
 
 # Define parameters for Stochastic RSI
 overbought_threshold = 80
@@ -242,7 +245,8 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
+        # 
+        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]
@@ -299,22 +303,24 @@ def analyze_stochrsi_30m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def analyze_mfi_signals_15m(exchange, symbol: str)->None:
+def analyze_mfi_signals_3m(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
+        df['rsi']      = round(talib.RSI(df['close'], timeperiod=14), 2)
 
-        # Scalping based on 15 minutes MFI  
+        # Scalping based on 3 minutes MFI  
         mfi = df['mfi'].iloc[-1]
+        rsi = df['rsi'].iloc[-1]
 
         sell = mfi > mfi_high_threshold
-        buy  = mfi < mfi_low_threshold
+        buy  = (mfi < mfi_low_threshold) | (rsi < rsi_low_threshold)
 
-        global mfi_15m
-        mfi_15m[symbol] = mfi
+        global mfi_3m
+        mfi_3m[symbol] = mfi
 
         # update data for execution of order
         global scalping_sell
@@ -323,10 +329,10 @@ def analyze_mfi_signals_15m(exchange, symbol: str)->None:
         scalping_buy[symbol] = buy
 
         # store information for dispaly
-        df['mfi_15m_scalping_sell'] = sell
-        df['mfi_15m_scalping_buy']  = buy
+        df['mfi_3m_scalping_sell'] = sell
+        df['mfi_rsi_3m_scalping_buy']  = buy
 
-        print(f'\n----------- {symbol} Signal Analysis (15 minutes) --------------')
+        print(f'\n----------- {symbol} Signal Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -726,14 +732,14 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, doge)
-    schedule.every(30).seconds.do(analyze_mfi_signals_15m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_mfi_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_mfi_signals_15m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_mfi_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
     
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
@@ -741,7 +747,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, sol)
-    schedule.every(30).seconds.do(analyze_mfi_signals_15m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_mfi_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
@@ -749,7 +755,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, btc)
-    schedule.every(30).seconds.do(analyze_mfi_signals_15m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_mfi_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
@@ -757,7 +763,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, eth)
     schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, eth)
     schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, eth)
-    schedule.every(30).seconds.do(analyze_mfi_signals_15m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_mfi_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
 
     #bollinger band order every 1minutes with 15minutes analysis
@@ -767,17 +773,17 @@ if __name__=='__main__':
     schedule.every(1).minutes.do(execute_order, exchange, btc)
     schedule.every(1).minutes.do(execute_order, exchange, eth)
 
-    # mfi 5 minute scalping
-    schedule.every(5).minutes.do(execute_mfi_scapling_sell, exchange, doge)
-    schedule.every(5).minutes.do(execute_mfi_scalping_buy, exchange, doge)
-    schedule.every(5).minutes.do(execute_mfi_scalping_buy, exchange, xrp)
-    schedule.every(5).minutes.do(execute_mfi_scapling_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_mfi_scalping_buy, exchange, sol)
-    schedule.every(5).minutes.do(execute_mfi_scapling_sell, exchange, sol)
-    schedule.every(5).minutes.do(execute_mfi_scalping_buy, exchange, btc)
-    schedule.every(5).minutes.do(execute_mfi_scapling_sell, exchange, btc)
-    schedule.every(5).minutes.do(execute_mfi_scalping_buy, exchange, eth)
-    schedule.every(5).minutes.do(execute_mfi_scapling_sell, exchange, eth)
+    # mfi 3 minute scalping
+    schedule.every(3).minutes.do(execute_mfi_scapling_sell, exchange, doge)
+    schedule.every(3).minutes.do(execute_mfi_scalping_buy, exchange, doge)
+    schedule.every(3).minutes.do(execute_mfi_scalping_buy, exchange, xrp)
+    schedule.every(3).minutes.do(execute_mfi_scapling_sell, exchange, xrp)
+    schedule.every(3).minutes.do(execute_mfi_scalping_buy, exchange, sol)
+    schedule.every(3).minutes.do(execute_mfi_scapling_sell, exchange, sol)
+    schedule.every(3).minutes.do(execute_mfi_scalping_buy, exchange, btc)
+    schedule.every(3).minutes.do(execute_mfi_scapling_sell, exchange, btc)
+    schedule.every(3).minutes.do(execute_mfi_scalping_buy, exchange, eth)
+    schedule.every(3).minutes.do(execute_mfi_scapling_sell, exchange, eth)
 
     #stochrsi based order every 5 minutes
     schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, doge)

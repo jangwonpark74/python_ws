@@ -23,9 +23,9 @@ scalping_sell= defaultdict(bool)
 # Bollinger band analysis based buy, sell amount
 bb_trading_amount = 2000000
 
-# MFI 33 scalping amount 
-mfi_scalping_sell_amount = 2000000
-mfi_scalping_buy_amount  = 2000000
+# MFI 5 minute scalping amount 
+mfi_scalping_sell_amount = 5000000
+mfi_scalping_buy_amount  = 5000000
 
 # 30m stochrsi amount 
 stochrsi_30m_sell_amount = 3000000
@@ -39,13 +39,13 @@ mfi_4h = defaultdict(float)
 mfi_1d = defaultdict(float)
 
 # MFI high low threshold
-mfi_high_threshold = 80
+mfi_high_threshold = 83
 mfi_low_threshold = 25
 rsi_low_threshold = 25
 
 # Define parameters for Stochastic RSI
-overbought_threshold = 80
-oversold_threshold = 23 
+overbought_threshold = 80 
+oversold_threshold = 23
 
 # Stoch RSI sell buy every 15 minutes
 stochrsi_15m_sell = defaultdict(bool)
@@ -84,7 +84,7 @@ def reset_sell_buy_order(symbol: str):
     buy_order[symbol] = False
 
 def calc_volatility(x: float) -> float:
-    volatility = round(-0.0012 * x * x + 0.12 * x +0.5, 2)
+    volatility = round(-0.0012 * x * x + 0.12 * x, 2)
     return volatility
 
 

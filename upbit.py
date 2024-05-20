@@ -25,7 +25,7 @@ bb_trading_amount = 2000000
 
 # MFI 5 minute scalping amount 
 mfi_scalping_sell_amount = 3000000
-mfi_scalping_buy_amount  = 1000000
+mfi_scalping_buy_amount  = 3000000
 
 # 30m stochrsi amount 
 stochrsi_30m_sell_amount = 2000000

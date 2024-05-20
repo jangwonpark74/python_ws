@@ -37,8 +37,8 @@ mfi_4h_scalping_sell_amount = 2000000
 mfi_4h_scalping_buy_amount  = 2000000
 
 # 15m stochrsi amount 
-stochrsi_15m_sell_amount = 4000000
-stochrsi_15m_buy_amount  = 4000000
+stochrsi_5m_sell_amount = 4000000
+stochrsi_5m_buy_amount  = 4000000
 
 # 4 Hour stochrsi amount 
 stochrsi_4h_sell_amount = 2000000
@@ -56,9 +56,9 @@ rsi_low_threshold = 25
 overbought_threshold = 80
 oversold_threshold = 25
 
-# StochRSI(15m) sell buy every 5 minutes
-stochrsi_15m_sell = defaultdict(bool)
-stochrsi_15m_buy = defaultdict(bool)
+# StochRSI(5m) sell buy every 5 minutes
+stochrsi_5m_sell = defaultdict(bool)
+stochrsi_5m_buy = defaultdict(bool)
 
 # StochRSI (4h) sell buy every 1 hour 
 stochrsi_4h_sell = defaultdict(bool)
@@ -209,9 +209,9 @@ def analyze_bb_signals_15m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-def analyze_stochrsi_15m(exchange, symbol: str)->None:
+def analyze_stochrsi_5m(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -233,12 +233,12 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['stochrsi_buy'] = buy
 
         # update data for execution of order
-        global stochrsi_15m_sell
-        global stochrsi_15m_buy
-        stochrsi_15m_sell[symbol] = sell
-        stochrsi_15m_buy[symbol] = buy
+        global stochrsi_5m_sell
+        global stochrsi_5m_buy
+        stochrsi_5m_sell[symbol] = sell
+        stochrsi_5m_buy[symbol] = buy
 
-        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (15 minutes) --------------')
+        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -414,15 +414,38 @@ def show_orderbook(orderbook):
 def bollinger_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((bb_trading_amount)/ price, 5)
-        resp = exchange.create_market_sell_order(symbol=symbol, amount = amount )
+        price  = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount = round((bb_trading_amount)/ price, 5)
+        resp   = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
         logging.info(f"Bollinger sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
+
+def bollinger_buy_coin(exchange,symbol: str)->None:
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        amount = 0.0
+        if free_KRW > (bb_trading_amount ):
+            amount = (bb_trading_amount)
+        else:
+            logging.info(f"Cancel bollinger buy for low balance {symbol} free KRW = {free_KRW}")
+            return
+
+        exchange.options['createMarketBuyOrderRequiresPrice']=False
+        resp = exchange.create_market_sell_order(symbol = symbol, amount = amount)
+
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
+        logging.info(f"Bollinger buy order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 
 def mfi_5m_scalping_sell_coin(exchange, symbol: str):
     try:
@@ -459,7 +482,6 @@ def mfi_5m_scalping_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-
 def mfi_4h_scalping_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
@@ -469,56 +491,6 @@ def mfi_4h_scalping_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         logging.info(f"MFI(4h) scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
-
-def stochrsi_15m_sell_coin(exchange, symbol: str):
-    try:
-        orderbook = exchange.fetch_order_book(symbol)
-        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((stochrsi_15m_sell_amount)/price, 3)
-        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
-
-        show_orderbook(orderbook)
-        logging.info(f"Stochrsi(15m) Sell order placed for {symbol} at price: {price}, amount = {amount}")
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
-def stochrsi_4h_sell_coin(exchange, symbol: str):
-    try:
-        orderbook = exchange.fetch_order_book(symbol)
-        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((stochrsi_4h_sell_amount)/price, 3)
-        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
-
-        show_orderbook(orderbook)
-        logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {amount}")
-
-    except Exception as e:
-        print("Exception : ", str(e))
-
-
-def bollinger_buy_coin(exchange,symbol: str)->None:
-    try:
-        orderbook = exchange.fetch_order_book(symbol)
-        free_KRW = exchange.fetchBalance()['KRW']['free']
-
-        amount = 0.0
-        if free_KRW > (bb_trading_amount ):
-            amount = (bb_trading_amount)
-        else:
-            logging.info(f"Cancel bollinger buy for low balance {symbol} free KRW = {free_KRW}")
-            return
-
-        exchange.options['createMarketBuyOrderRequiresPrice']=False
-        resp = exchange.create_market_sell_order(symbol = symbol, amount = amount)
-
-        show_orderbook(orderbook)
-        price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Bollinger buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -545,18 +517,30 @@ def mfi_4h_scalping_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+def stochrsi_5m_sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((stochrsi_5m_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
+        show_orderbook(orderbook)
+        logging.info(f"Stochrsi(5m) Sell order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def stochrsi_5m_buy_coin(exchange,symbol: str)->None:
     try:
         orderbook = exchange.fetch_order_book(symbol)
 
         amount = 0.0
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
-        if free_KRW > stochrsi_15m_buy_amount:
-            amount = stochrsi_15m_buy_amount
+        if free_KRW > stochrsi_5m_buy_amount:
+            amount = stochrsi_5m_buy_amount
         else:
-            logging.info(f"Cancel STOCHRSI (15m) buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel STOCHRSI (5m) buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -564,10 +548,24 @@ def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"STOCHRSI(15m) buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI(5m) buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
+
+def stochrsi_4h_sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((stochrsi_4h_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
+
+        show_orderbook(orderbook)
+        logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 
 def stochrsi_4h_buy_coin(exchange,symbol: str)->None:
     try:
@@ -590,6 +588,7 @@ def stochrsi_4h_buy_coin(exchange,symbol: str)->None:
 
     except Exception as e:
         print("Exception : ", str(e))
+
 
 def supertrend_sell_update(symbol: str):
     global supertrend_sell_amount
@@ -680,17 +679,17 @@ def execute_mfi_4h_scalping_buy(exchange, symbol: str)->None:
     if sell:
        mfi_4h_scalping_buy_coin(exchange, symbol)
 
-def execute_stochrsi_15m_sell(exchange, symbol: str)->None:
-    sell = stochrsi_15m_sell[symbol]
+def execute_stochrsi_5m_sell(exchange, symbol: str)->None:
+    sell = stochrsi_5m_sell[symbol]
 
     if sell:
-       stochrsi_15m_sell_coin(exchange, symbol)
+       stochrsi_5m_sell_coin(exchange, symbol)
 
-def execute_stochrsi_15m_buy(exchange, symbol: str)->None:
-    buy = stochrsi_15m_buy[symbol]
+def execute_stochrsi_5m_buy(exchange, symbol: str)->None:
+    buy = stochrsi_5m_buy[symbol]
 
     if buy:
-        stochrsi_15m_buy_coin(exchange, symbol)
+        stochrsi_5m_buy_coin(exchange, symbol)
 
 def execute_stochrsi_4h_sell(exchange, symbol: str)->None:
     sell = stochrsi_4h_sell[symbol] 
@@ -848,7 +847,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, doge)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, doge)
-    schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
@@ -856,7 +855,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
@@ -864,7 +863,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, sol)
-    schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, sol)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
@@ -872,7 +871,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, btc)
-    schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, btc)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
@@ -880,7 +879,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, eth)
-    schedule.every(30).seconds.do(analyze_stochrsi_15m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, eth)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, eth)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
@@ -916,17 +915,17 @@ if __name__=='__main__':
     schedule.every(1).hours.do(execute_mfi_4h_scalping_buy, exchange, eth)
     schedule.every(1).hours.do(execute_mfi_4h_scapling_sell, exchange, eth)
 
-    #stochrsi (15m) based order every 5 minutes
-    schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, doge)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, xrp)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, sol)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, btc)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_buy, exchange, eth)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_sell, exchange, doge)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_sell, exchange, sol)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_sell, exchange, btc)
-    schedule.every(5).minutes.do(execute_stochrsi_15m_sell, exchange, eth)
+    #stochrsi (5m) based order every 5 minutes
+    schedule.every(5).minutes.do(execute_stochrsi_5m_buy, exchange, doge)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_buy, exchange, xrp)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_buy, exchange, sol)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_buy, exchange, eth)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, doge)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, sol)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, eth)
 
     #stochrsi (4h) based order every 1 hour 
     schedule.every(1).hours.do(execute_stochrsi_4h_buy, exchange, doge)

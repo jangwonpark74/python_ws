@@ -160,7 +160,7 @@ def analyze_signals_4h(exchange, symbol: str)->None:
         global mfi_4h_sell
         global mfi_4h_buy
         mfi_4h_sell[symbol] = sell
-        mfi_buy[symbol] = buy
+        mfi_4h_buy[symbol] = buy
 
         # store information for dispaly
         df['mfi_4h_sell'] = sell

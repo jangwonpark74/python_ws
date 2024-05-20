@@ -384,7 +384,7 @@ def analyze_mfi_signals_10m(exchange, symbol: str)->None:
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
         df['rsi']      = round(talib.RSI(df['close'], timeperiod=14), 2)
 
-        # Scalping based on 3 minutes MFI  
+        # Scalping based on 10 minutes MFI  
         mfi = df['mfi'].iloc[-1]
         rsi = df['rsi'].iloc[-1]
 

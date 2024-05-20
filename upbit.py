@@ -21,8 +21,8 @@ mfi_3m_scalping_buy = defaultdict(bool)
 mfi_3m_scalping_sell= defaultdict(bool)
 
 # scalping every 1 hour based on MFI(4h) indicator 
-mfi_4h_sell = defaultdict(bool)
-mfi_4h_buy = defaultdict(bool)
+mfi_4h_scalping_sell = defaultdict(bool)
+mfi_4h_scalping_buy = defaultdict(bool)
 
 # Bollinger band analysis based buy, sell amount
 bb_trading_amount = 2000000
@@ -157,13 +157,13 @@ def analyze_signals_4h(exchange, symbol: str)->None:
         buy  = (mfi < mfi_low_threshold) | (rsi < rsi_low_threshold)
 
         # update data for execution of order
-        global mfi_4h_sell
+        global mfi_4h_scalping_sell
         global mfi_4h_buy
-        mfi_4h_sell[symbol] = sell
+        mfi_4h_scalping_sell[symbol] = sell
         mfi_4h_buy[symbol] = buy
 
         # store information for dispaly
-        df['mfi_4h_sell'] = sell
+        df['mfi_4h_scalping_sell'] = sell
         df['mfi_4h_buy']  = buy
 
         # update global variable mfi_4h for volatility calculation
@@ -424,7 +424,7 @@ def bollinger_sell_coin(exchange, symbol: str):
     except Exception as e:
         print("Exception : ", str(e))
 
-def mfi_scalping_sell_coin(exchange, symbol: str):
+def mfi_3m_scalping_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
@@ -655,24 +655,6 @@ def execute_bollinger_order(exchange, symbol: str)->None:
     if (iterations[symbol] % 15 == 0):
        reset_bollinger_order(symbol)
 
-def execute_mfi_3m_scalping_buy(exchange, symbol: str)->None:
-    sell = mfi_3m_scalping_sell[symbol]
-
-    if sell:
-       mfi_3m_scalping_sell_coin(exchange, symbol)
-
-def execute_mfi_4h_scapling_sell(exchange, symbol: str)->None:
-    buy = mfi_4h_buy[symbol]
-
-    if buy:
-        mfi_4h_scalping_buy_coin(exchange, symbol)
-
-def execute_mfi_4h_scalping_buy(exchange, symbol: str)->None:
-    sell = mfi_4h_sell[symbol]
-
-    if sell:
-       mfi_4h_scalping_sell_coin(exchange, symbol)
-
 def execute_mfi_3m_scapling_sell(exchange, symbol: str)->None:
     buy = mfi_3m_scalping_buy[symbol]
 
@@ -680,25 +662,43 @@ def execute_mfi_3m_scapling_sell(exchange, symbol: str)->None:
         mfi_3m_scalping_buy_coin(exchange, symbol)
 
 
-def execute_stochrsi_15m_buy(exchange, symbol: str)->None:
+def execute_mfi_3m_scalping_buy(exchange, symbol: str)->None:
+    sell = mfi_3m_scalping_sell[symbol]
+
+    if sell:
+       mfi_3m_scalping_sell_coin(exchange, symbol)
+
+def execute_mfi_4h_scapling_sell(exchange, symbol: str)->None:
+    buy = mfi_4h_sell[symbol]
+
+    if buy:
+        mfi_4h_scalping_sell_coin(exchange, symbol)
+
+def execute_mfi_4h_scalping_buy(exchange, symbol: str)->None:
+    sell = mfi_4h_scalping_buy[symbol]
+
+    if sell:
+       mfi_4h_scalping_buy_coin(exchange, symbol)
+
+def execute_stochrsi_15m_sell(exchange, symbol: str)->None:
     sell = stochrsi_15m_sell[symbol]
 
     if sell:
        stochrsi_15m_sell_coin(exchange, symbol)
 
-def execute_stochrsi_15m_sell(exchange, symbol: str)->None:
+def execute_stochrsi_15m_buy(exchange, symbol: str)->None:
     buy = stochrsi_15m_buy[symbol]
 
     if buy:
         stochrsi_15m_buy_coin(exchange, symbol)
 
-def execute_stochrsi_4h_buy(exchange, symbol: str)->None:
+def execute_stochrsi_4h_sell(exchange, symbol: str)->None:
     sell = stochrsi_4h_sell[symbol] 
 
     if sell:
        stochrsi_4h_sell_coin(exchange, symbol)
 
-def execute_stochrsi_4h_sell(exchange, symbol: str)->None:
+def execute_stochrsi_4h_buy(exchange, symbol: str)->None:
     buy = stochrsi_4h_buy[symbol]
 
     if buy:

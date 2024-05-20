@@ -3,7 +3,7 @@ import talib
 import time
 import schedule
 import pandas as pd
-import logging 
+import logging
 import time
 
 from pprint import pprint
@@ -87,7 +87,7 @@ supertrend_buy_amount = 2000000
 supertrend_sell_quota = defaultdict(float) 
 supertrend_sell_amount = defaultdict(float)
 
-#pd.set_option('display.max_rows', None)
+pd.set_option('display.max_rows', None)
 
 def reset_bollinger_order(symbol: str):
     global bollinger_sell
@@ -116,16 +116,18 @@ def analyze_historical_data(exchange, symbol:str):
 def analyze_signals_1d(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
-        df_1d = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
-        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1d['bollinger_upper'], df_1d['bollinger_middle'], df_1d['bollinger_lower'] = talib.BBANDS(df_1d['close'])
-        df_1d['mfi']             = round( talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
+        df['rsi']      = talib.RSI(df['close'], timeperiod=14)
+        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = \
+                         talib.BBANDS(df['close'])
 
-        df_1d['bollinger_width'] = round(((df_1d['bollinger_upper'] - df_1d['bollinger_lower'])/df_1d['bollinger_middle']) * 100, 1)
-        df_1d['bollinger_upper'] = round(df_1d['bollinger_upper'], 1)
-        df_1d['bollinger_middle']= round(df_1d['bollinger_middle'], 1)
-        df_1d['bollinger_lower'] = round(df_1d['bollinger_lower'], 1)
+        df['bollinger_width'] = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100, 1)
+        df['bollinger_upper'] = round(df['bollinger_upper'], 1)
+        df['bollinger_middle']= round(df['bollinger_middle'], 1)
+        df['bollinger_lower'] = round(df['bollinger_lower'], 1)
 
         print(f'\n----------------------- {symbol} Signal Analysis ( 1 day ) -----------------------------')
         pprint(df_1d.iloc[-1])
@@ -148,6 +150,7 @@ def analyze_signals_4h(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
         df['rsi']      = talib.RSI(df['close'], timeperiod=14)
+        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = talib.BBANDS(df_1d['close'])
 
         # Scalping based on MFI and RSI every 4 hours
         mfi = df['mfi'].iloc[-1]

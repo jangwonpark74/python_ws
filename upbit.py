@@ -655,14 +655,13 @@ def execute_bollinger_order(exchange, symbol: str)->None:
     if (iterations[symbol] % 15 == 0):
        reset_bollinger_order(symbol)
 
-def execute_mfi_3m_scapling_sell(exchange, symbol: str)->None:
+def execute_mfi_3m_scapling_buy(exchange, symbol: str)->None:
     buy = mfi_3m_scalping_buy[symbol]
 
     if buy:
         mfi_3m_scalping_buy_coin(exchange, symbol)
 
-
-def execute_mfi_3m_scalping_buy(exchange, symbol: str)->None:
+def execute_mfi_3m_scalping_sell(exchange, symbol: str)->None:
     sell = mfi_3m_scalping_sell[symbol]
 
     if sell:

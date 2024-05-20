@@ -215,8 +215,11 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
+        close = df['close']
+        reverse_close = close[::-1]
+
         # STOCH RSI calculation 
-        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
+        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(reverse_close, timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]
@@ -248,7 +251,10 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
+        close = df['close']
+        reverse_close = close[::-1]
+
+        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(reverse_close, timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]

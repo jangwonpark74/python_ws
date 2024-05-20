@@ -158,7 +158,7 @@ def analyze_signals_4h(exchange, symbol: str)->None:
 
         # update data for execution of order
         global mfi_4h_scalping_sell
-        global mfi_4h_buy
+        global mfi_4h_scalping_buy
         mfi_4h_scalping_sell[symbol] = sell
         mfi_4h_buy[symbol] = buy
 
@@ -655,13 +655,13 @@ def execute_bollinger_order(exchange, symbol: str)->None:
     if (iterations[symbol] % 15 == 0):
        reset_bollinger_order(symbol)
 
-def execute_mfi_3m_scapling_buy(exchange, symbol: str)->None:
+def execute_mfi_3m_buy_order(exchange, symbol: str)->None:
     buy = mfi_3m_scalping_buy[symbol]
 
     if buy:
         mfi_3m_scalping_buy_coin(exchange, symbol)
 
-def execute_mfi_3m_scalping_sell(exchange, symbol: str)->None:
+def execute_mfi_3m_sell_order(exchange, symbol: str)->None:
     sell = mfi_3m_scalping_sell[symbol]
 
     if sell:
@@ -892,16 +892,16 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_bollinger_order, exchange, eth)
 
     # mfi 3 minute scalping
-    schedule.every(3).minutes.do(execute_mfi_3m_scalping_buy, exchange, doge)
-    schedule.every(3).minutes.do(execute_mfi_3m_scalping_buy, exchange, xrp)
-    schedule.every(3).minutes.do(execute_mfi_3m_scalping_buy, exchange, sol)
-    schedule.every(3).minutes.do(execute_mfi_3m_scalping_buy, exchange, btc)
-    schedule.every(3).minutes.do(execute_mfi_3m_scalping_buy, exchange, eth)
-    schedule.every(3).minutes.do(execute_mfi_3m_scapling_sell, exchange, doge)
-    schedule.every(3).minutes.do(execute_mfi_3m_scapling_sell, exchange, xrp)
-    schedule.every(3).minutes.do(execute_mfi_3m_scapling_sell, exchange, sol)
-    schedule.every(3).minutes.do(execute_mfi_3m_scapling_sell, exchange, btc)
-    schedule.every(3).minutes.do(execute_mfi_3m_scapling_sell, exchange, eth)
+    schedule.every(3).minutes.do(execute_mfi_3m_buy_order, exchange, doge)
+    schedule.every(3).minutes.do(execute_mfi_3m_buy_order, exchange, xrp)
+    schedule.every(3).minutes.do(execute_mfi_3m_buy_order, exchange, sol)
+    schedule.every(3).minutes.do(execute_mfi_3m_buy_order, exchange, btc)
+    schedule.every(3).minutes.do(execute_mfi_3m_buy_order, exchange, eth)
+    schedule.every(3).minutes.do(execute_mfi_3m_sell_order, exchange, doge)
+    schedule.every(3).minutes.do(execute_mfi_3m_sell_order, exchange, xrp)
+    schedule.every(3).minutes.do(execute_mfi_3m_sell_order, exchange, sol)
+    schedule.every(3).minutes.do(execute_mfi_3m_sell_order, exchange, btc)
+    schedule.every(3).minutes.do(execute_mfi_3m_sell_order, exchange, eth)
 
     # mfi 4 hour scalping
     schedule.every(1).hours.do(execute_mfi_4h_scapling_sell, exchange, doge)

@@ -713,7 +713,7 @@ def execute_supertrend_buy(exchange, symbol:str):
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol","Supertrend Up", "Buy", "Sell", "MFI(3m) Buy", "MFI(3m) Sell", "MFI(4h) Buy", "MFI(4h) Sell"]
+    column_name= ["Symbol","Supertrend Up", "Buy", "Sell", "MFI(10m) Buy", "MFI(10m) Sell", "MFI(4h) Buy", "MFI(4h) Sell"]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:

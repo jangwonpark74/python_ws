@@ -719,11 +719,13 @@ def execute_supertrend_buy(exchange, symbol:str):
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol","Supertrend Up", "Buy", "Sell", "Scalping Buy", "Scalping Sell"]
+    column_name= ["Symbol","Supertrend Up", "Buy", "Sell", "MFI(3m) Buy", "MFI(3m) Sell", "MFI(4h) Buy", "MFI(4h) Sell"]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:
-        orders.loc[len(orders)] = [s, supertrend_up[s], bollinger_buy[s], bollinger_sell[s], scalping_buy[s],scalping_sell[s]]
+        orders.loc[len(orders)] = [s, supertrend_up[s], bollinger_buy[s], bollinger_sell[s],\
+                                   mfi_3m_scalping_buy[s], mfi_3m_scalping_sell[s], \
+                                   mfi_4h_scalping_buy[s], mfi_4h_scalping_sell[s]]
     pprint(orders)
 
 def monitor_balance(exchange):

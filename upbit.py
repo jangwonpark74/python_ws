@@ -547,10 +547,10 @@ def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
         amount = 0.0
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
-        if free_KRW > (mfi_3m_scalping_buy_amount ):
-            amount = (mfi_3m_scalping_buy_amount) 
+        if free_KRW > stochrsi_15m_buy_amount:
+            amount = stochrsi_15m_buy_amount
         else:
-            logging.info(f"Cancel STOCHRSI 15 minutes buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel STOCHRSI (15m) buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -718,7 +718,7 @@ def monitor(symbols : list[str]):
 
     for s in symbols:
         orders.loc[len(orders)] = [s, supertrend_up[s], bollinger_buy[s], bollinger_sell[s],\
-                                   mfi_3m_scalping_buy[s], mfi_3m_scalping_sell[s], \
+                                   mfi_10m_scalping_buy[s], mfi_10m_scalping_sell[s], \
                                    mfi_4h_scalping_buy[s], mfi_4h_scalping_sell[s]]
     pprint(orders)
 

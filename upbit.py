@@ -117,7 +117,7 @@ def analyze_signals_1d(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
         df['rsi']      = talib.RSI(df['close'], timeperiod=14)
@@ -130,11 +130,11 @@ def analyze_signals_1d(exchange, symbol: str)->None:
         df['bollinger_lower'] = round(df['bollinger_lower'], 1)
 
         print(f'\n----------------------- {symbol} Signal Analysis ( 1 day ) -----------------------------')
-        pprint(df_1d.iloc[-1])
+        pprint(df.iloc[-1])
 
         # daily mfi update 
         global mfi_1d
-        mfi = round (df_1d['mfi'].iloc[-1], 2)
+        mfi = df['mfi'].iloc[-1]
         mfi_1d[symbol] = mfi
 
         print(f'\nSymbol: {symbol} MFI(1d, 14) = {mfi_1d[symbol]}')
@@ -150,7 +150,7 @@ def analyze_signals_4h(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
         df['rsi']      = talib.RSI(df['close'], timeperiod=14)
-        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = talib.BBANDS(df_1d['close'])
+        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = talib.BBANDS(df['close'])
 
         # Scalping based on MFI and RSI every 4 hours
         mfi = df['mfi'].iloc[-1]

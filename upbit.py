@@ -43,12 +43,8 @@ stochrsi_15m_buy_amount  = 4000000
 stochrsi_4h_sell_amount = 2000000
 stochrsi_4h_buy_amount  = 2000000
 
-# MFI 3 minutes for scalping
-mfi_3m = defaultdict(float)
-
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
-mfi_1d = defaultdict(float)
 
 # MFI high low threshold
 mfi_high_threshold = 83
@@ -133,11 +129,7 @@ def analyze_signals_1d(exchange, symbol: str)->None:
         pprint(df.iloc[-1])
 
         # daily mfi update 
-        global mfi_1d
         mfi = df['mfi'].iloc[-1]
-        mfi_1d[symbol] = mfi
-
-        print(f'\nSymbol: {symbol} MFI(1d, 14) = {mfi_1d[symbol]}')
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -251,19 +243,21 @@ def analyze_bb_signals_15m(exchange, symbol: str)->None:
         df['bollinger_width']  = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100 , 3)
 
         # bollinger volatility based sell buy decision with bollinger width threshold
-        mfi = mfi_4h[symbol] 
         bb_width = df['bollinger_width'].iloc[-1]
-        
-        # sell, buy condition check
-        global bollinger_sell
-        sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
-        bollinger_sell[symbol] = sell
-        df['bollinger_sell'] = sell
 
-        global bollinger_buy
-        buy = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
-        bollinger_buy[symbol] = buy 
+        # sell, buy condition check
+        mfi = mfi_4h[symbol] 
+        sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
+        buy  = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
+
+        df['bollinger_sell'] = sell
         df['bollinger_buy'] = buy
+
+        global bollinger_sell
+        global bollinger_buy
+
+        bollinger_sell[symbol] = sell
+        bollinger_buy[symbol] = buy
 
         print(f'\n----------- {symbol} Bollinger Sell/Buy and Volatiltiy Analysis (15 minutes) --------------')
         pprint(df.iloc[-1])
@@ -278,7 +272,7 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        # 
+        # STOCH RSI calculation 
         df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
 
         # Get the latest value
@@ -289,14 +283,14 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         sell = current_stochrsi_k < current_stochrsi_d and current_stochrsi_k > overbought_threshold
         buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold 
 
+        df['stochrsi_sell'] = sell
+        df['stochrsi_buy'] = buy
+
         # update data for execution of order
         global stochrsi_15m_sell
         global stochrsi_15m_buy
         stochrsi_15m_sell[symbol] = sell
         stochrsi_15m_buy[symbol] = buy
-
-        df['stochrsi_sell'] = sell
-        df['stochrsi_buy'] = buy
 
         print(f'\n----------- {symbol} STOCHRSI Signal Analysis (15 minutes) --------------')
         pprint(df.iloc[-1])
@@ -321,14 +315,14 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
         sell = current_stochrsi_k < current_stochrsi_d and current_stochrsi_k > overbought_threshold
         buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold 
 
+        df['stochrsi_sell'] = sell
+        df['stochrsi_buy'] = buy
+
         # update data for execution of order
         global stochrsi_4h_sell
         global stochrsi_4h_buy
         stochrsi_4h_sell[symbol] = sell
         stochrsi_4h_buy[symbol] = buy
-
-        df['stochrsi_sell'] = sell
-        df['stochrsi_buy'] = buy
 
         print(f'\n----------- {symbol} Stochrsi Signal Analysis (4 hours) --------------')
         pprint(df.iloc[-1])
@@ -391,9 +385,6 @@ def analyze_mfi_signals_3m(exchange, symbol: str)->None:
         sell = mfi > mfi_high_threshold
         buy  = (mfi < mfi_low_threshold) | (rsi < rsi_low_threshold)
 
-        global mfi_3m
-        mfi_3m[symbol] = mfi
-
         # update data for execution of order
         global mfi_3m_scalping_sell
         global mfi_3m_scalping_buy
@@ -435,7 +426,7 @@ def mfi_3m_scalping_sell_coin(exchange, symbol: str):
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"MFI scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI(3m) scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -448,7 +439,7 @@ def mfi_4h_scalping_sell_coin(exchange, symbol: str):
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"MFI scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI(4h) scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -462,7 +453,7 @@ def stochrsi_15m_sell_coin(exchange, symbol: str):
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi 15 minutes Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Stochrsi(15m) Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -475,7 +466,7 @@ def stochrsi_4h_sell_coin(exchange, symbol: str):
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi 4 Hour Sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -512,7 +503,7 @@ def mfi_3m_scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (mfi_3m_scalping_buy_amount ):
             amount = (mfi_3m_scalping_buy_amount)
         else:
-            logging.info(f"Cancel MFI buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel MFI(3m) buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -520,7 +511,7 @@ def mfi_3m_scalping_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"MFI scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI(3m) scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -542,7 +533,7 @@ def mfi_4h_scalping_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"MFI scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI(4h) scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -566,7 +557,7 @@ def stochrsi_15m_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"STOCHRSI 15 minutes buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI(15m) buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -588,7 +579,7 @@ def stochrsi_4h_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"STOCHRSI 4 hours buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"STOCHRSI(4h) Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -605,7 +596,7 @@ def supertrend_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        logging.info(f"Supertrend sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
         global supertrend_sell_iter 
         supertrend_sell_iter[symbol] = supertrend_sell_iter[symbol] + 1
@@ -637,7 +628,7 @@ def supertrend_buy_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        logging.info(f"Supertrend buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

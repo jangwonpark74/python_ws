@@ -5,6 +5,7 @@ import schedule
 import pandas as pd
 import logging
 import time
+import pandas_ta as ta
 
 from pprint import pprint
 from collections import defaultdict
@@ -215,12 +216,11 @@ def analyze_stochrsi_15m(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        close = df['close']
-        reverse_close = close[::-1]
+        stochrsi = ta.stochrsi(df['close'], length=14, fastk_period=3, fastd_period=3, append=True)
 
-        # STOCH RSI calculation 
-        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(reverse_close, timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
-
+        df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
+        df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
+ 
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]
         current_stochrsi_d = df['stochrsi_d'].iloc[-1]
@@ -251,10 +251,9 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        close = df['close']
-        reverse_close = close[::-1]
-
-        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(reverse_close, timeperiod=14, fastk_period=3, fastd_period=3, fastd_matype=0) 
+        stochrsi = ta.stochrsi(df['close'], length=14, fastk_period=3, fastd_period=3, append=True)
+        df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
+        df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
 
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]

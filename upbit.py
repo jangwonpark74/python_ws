@@ -17,6 +17,10 @@ from conf import binance_key
 bollinger_buy = defaultdict(bool)
 bollinger_sell = defaultdict(bool)
 
+# Bollinger threshold for logging
+bollinger_threshold = defaultdict(float)
+bollinger_width = defaultdict(float)
+
 # scalping every 5 minute based on MFI(5m)indicator 
 mfi_5m_scalping_buy = defaultdict(bool)
 mfi_5m_scalping_sell= defaultdict(bool)
@@ -118,9 +122,7 @@ def analyze_signals_1d(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
         df['rsi']      = talib.RSI(df['close'], timeperiod=14)
-        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = \
-                         talib.BBANDS(df['close'])
-
+        df['bollinger_upper'], df['bollinger_middle'], df['bollinger_lower'] = talib.BBANDS(df['close'])
         df['bollinger_width'] = round(((df['bollinger_upper'] - df['bollinger_lower'])/df['bollinger_middle']) * 100, 1)
         df['bollinger_upper'] = round(df['bollinger_upper'], 1)
         df['bollinger_middle']= round(df['bollinger_middle'], 1)
@@ -191,11 +193,19 @@ def analyze_bb_signals_15m(exchange, symbol: str)->None:
 
         # sell, buy condition check
         mfi = mfi_4h[symbol] 
-        sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > calc_volatility(mfi)) 
-        buy  = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > calc_volatility(mfi))
+        threshold = calc_volatility(mfi)
+        sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > threshold) 
+        buy  = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > threshold)
 
         df['bollinger_sell'] = sell
         df['bollinger_buy'] = buy
+
+        if sell | buy :
+            bollinger_threshold[symbol] = threshold
+            bollinger_width[symbol] = bb_width
+        else:
+            bollinger_threshold[symbol] = 0.0
+            bollinger_width[symbol] = 0.0
 
         global bollinger_sell
         global bollinger_buy
@@ -419,7 +429,8 @@ def bollinger_sell_coin(exchange, symbol: str):
         resp   = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Bollinger sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Bollinger sell : {symbol}, price={price}, amount={amount},\
+                     threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -441,7 +452,8 @@ def bollinger_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Bollinger buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"Bollinger buy :{symbol}, price={price}, amount = {amount}, \
+                     threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
 
     except Exception as e:
         print("Exception : ", str(e))

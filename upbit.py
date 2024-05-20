@@ -24,12 +24,12 @@ scalping_sell= defaultdict(bool)
 bb_trading_amount = 2000000
 
 # MFI 5 minute scalping amount 
-mfi_scalping_sell_amount = 5000000
-mfi_scalping_buy_amount  = 5000000
+mfi_scalping_sell_amount = 3000000
+mfi_scalping_buy_amount  = 1000000
 
 # 30m stochrsi amount 
-stochrsi_30m_sell_amount = 3000000
-stochrsi_30m_buy_amount  = 3000000
+stochrsi_30m_sell_amount = 2000000
+stochrsi_30m_buy_amount  = 2000000
 
 # MFI 3 minutes for scalping
 mfi_3m = defaultdict(float)

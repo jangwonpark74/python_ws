@@ -303,6 +303,45 @@ def analyze_stochrsi_30m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+
+## Todo monitor bitcoin trading for market sentiment estimation 
+##    +1% change in 30 minutes : buy or binance call x5 order  
+##    -1% change in 30 minutes : sell or binance put x5 order
+## utilize some action after this event 
+'''
+def analyze_bitcoin_30m(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        df['stochrsi_k'], df['stochrsi_d'] = talib.STOCHRSI(df['close'], timeperiod=14, fastk_period=5, fastd_period=3, fastd_matype=0) 
+
+        # Get the latest value
+        current_stochrsi_k = df['stochrsi_k'].iloc[-1]
+        current_stochrsi_d = df['stochrsi_d'].iloc[-1]
+
+        # Stoch rsi cross-over strategy
+        sell = current_stochrsi_k < current_stochrsi_d and current_stochrsi_k > overbought_threshold
+        buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold 
+
+        # update data for execution of order
+        global stochrsi_30m_sell
+        global stochrsi_30m_buy
+        stochrsi_30m_sell[symbol] = sell
+        stochrsi_30m_buy[symbol] = buy
+
+        df['stochrsi_sell'] = sell
+        df['stochrsi_buy'] = buy
+
+        print(f'\n----------- {symbol} Stochrsi Signal Analysis (30 Minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        print("Exception : ", str(e))
+'''
+
 def analyze_mfi_signals_3m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')

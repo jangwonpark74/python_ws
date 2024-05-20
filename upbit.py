@@ -668,7 +668,7 @@ def execute_mfi_10m_sell_order(exchange, symbol: str)->None:
        mfi_10m_scalping_sell_coin(exchange, symbol)
 
 def execute_mfi_4h_scapling_sell(exchange, symbol: str)->None:
-    buy = mfi_4h_sell[symbol]
+    buy = mfi_4h_scalping_sell[symbol]
 
     if buy:
         mfi_4h_scalping_sell_coin(exchange, symbol)

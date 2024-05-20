@@ -36,8 +36,8 @@ mfi_4h_scalping_sell_amount = 2000000
 mfi_4h_scalping_buy_amount  = 2000000
 
 # 15m stochrsi amount 
-stochrsi_15m_sell_amount = 1000000
-stochrsi_15m_buy_amount  = 1000000
+stochrsi_15m_sell_amount = 4000000
+stochrsi_15m_buy_amount  = 4000000
 
 # 4 Hour stochrsi amount 
 stochrsi_4h_sell_amount = 2000000
@@ -59,13 +59,13 @@ rsi_low_threshold = 25
 overbought_threshold = 80
 oversold_threshold = 25
 
-# Stoch RSI sell buy every 15 minutes
+# StochRSI(15m) sell buy every 5 minutes
 stochrsi_15m_sell = defaultdict(bool)
 stochrsi_15m_buy = defaultdict(bool)
 
-# Stoch RSI sell buy every 30 minutes 
-stochrsi_30m_sell = defaultdict(bool)
-stochrsi_30m_buy = defaultdict(bool)
+# StochRSI (4h) sell buy every 1 hour 
+stochrsi_4h_sell = defaultdict(bool)
+stochrsi_4h_buy = defaultdict(bool)
 
 # Global variable to keep the count for max 15 minutes continue for order
 iterations = defaultdict(int)

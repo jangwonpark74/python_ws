@@ -609,11 +609,11 @@ def supertrend_sell_update(symbol: str):
 def supertrend_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         amount    = round((supertrend_sell_amount)/price, 3)
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
         global supertrend_sell_iter 

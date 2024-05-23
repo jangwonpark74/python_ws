@@ -68,6 +68,7 @@ mfi_4h = defaultdict(float)
 rsi_3m_high_threshold = 70
 rsi_3m_low_threshold = 25
 rsi_low_threshold = 25
+rsi_high_threshold = 70 
 
 # MFI high low threshold
 mfi_high_threshold = 83

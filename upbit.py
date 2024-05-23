@@ -56,6 +56,11 @@ stochrsi_5m_buy_amount  = 3000000
 stochrsi_4h_sell_amount = 4000000
 stochrsi_4h_buy_amount  = 4000000
 
+
+# RSI 3 minute buy and sell
+rsi_3m_sell = defaultdict(bool)
+rsi_3m_buy = defaultdeict(bool)
+
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
 
@@ -95,6 +100,14 @@ supertrend_sell = defaultdict(bool)
 
 # supertrend buy amount at every 2 hour
 supertrend_buy_amount = 2000000
+
+# Supertrend cautious buy, sell at every 1 hour 
+# if MFI/RSI guard condition is true
+supertrend_cautious_buy = defaultdict(bool)
+supertrend_cautious_sell = defaultdict(bool)
+
+# supertrend cautious order amount at every 1 hour 
+supertrend_cautious_order_amount = 1000000
 
 # supertrend sell one time 
 supertrend_sell_quota = defaultdict(float) 
@@ -359,6 +372,67 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
 
         print(f'\n----------- {symbol} Stochrsi Signal Analysis (4 hours) --------------')
         pprint(df.iloc[-1])
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+
+def analyze_supertrend_1h(exchange, symbol: str)->None:
+    try:
+        # upto 100 hour analyze supertrend 
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1h')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
+        df['rsi']      = talib.RSI(df['close'], timeperiod=14)
+
+        # cautious supertrend sell and buy with mfi and rsi guard 
+        mfi = df['mfi'].iloc[-1]
+        rsi = df['rsi'].iloc[-1]
+
+        mfi_sell = mfi > (mfi_high_threshold - 15)
+        mfi_buy = mfi < (mfi_low_threshold + 15)
+        rsi_sell = rsi > (rsi_high_thresold - 10)
+        rsi_buy  = rsi < (rsi_low_threshold + 10)
+
+        period = 14
+        multiplier = 2.0
+
+        df['atr'] = talib.ATR(df['high'].values, df['low'].values, df['close'].values, timeperiod=period)
+
+        df['upperband'] = (df['high'] + df['low'])/2 + (multiplier * df['atr'])
+        df['lowerband'] = (df['high'] + df['low'])/2 - (multiplier * df['atr'])
+
+        df['in_uptrend'] = False
+
+        for i in range(1, len(df.index)):
+            p = i - 1
+
+            if df['close'][i] > df['upperband'][p]:
+                df.loc[i, 'in_uptrend'] = True
+            elif df['close'][i] < df['lowerband'][p]:
+                df.loc[i, 'in_uptrend'] = False
+            else:
+                df.loc[i, 'in_uptrend'] = df.loc[p,'in_uptrend']
+
+                if (df['in_uptrend'][i] == True) and df['lowerband'][i] < df['lowerband'][p] :
+                    df.loc[i, 'lowerband'] = df.loc[p, 'lowerband']
+
+                if (df['in_uptrend'][i] == False) and df['upperband'][i] > df['upperband'][p]:
+                    df.loc[i, 'upperband'] = df.loc[p, 'upperband']
+
+        print(f'\n----------- Analyze supertrend(4h) --------------')
+
+        pprint(df.iloc[-1])
+
+        in_uptrend = df.iloc[-1]['in_uptrend']
+
+        global supertrend_cautious_buy
+        supertrend_cautious_buy[symbol] = in_uptrend and mfi_buy and rsi_buy
+
+        global supertrend_cautious_sell
+        supertrend_cautious_sell[symbol] = (not in_uptrend) and mfi_sell and rsi_sell
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -690,7 +764,7 @@ def supertrend_sell_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         logging.info(f"Supertrend Sell order placed for {symbol} at price: {price}, amount = {amount}")
 
-        global supertrend_sell_iter 
+        global supertrend_sell_iter
         supertrend_sell_iter[symbol] = supertrend_sell_iter[symbol] + 1
 
         supertrend_sell_amount_update(symbol)
@@ -721,6 +795,41 @@ def supertrend_buy_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
         logging.info(f"Supertrend Buy order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def supertrend_cautious_sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((supertrend_cautious_order_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
+
+        show_orderbook(orderbook)
+        logging.info(f"Supertrend Cautious Sell Order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def supertrend_cautious_buy_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+
+        amount = 0.0
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+        if free_KRW > (supertrend_cautious_order_amount ):
+            amount = (supertrend_cautious_order_amount)
+        else:
+            logging.info(f"Cancel supertrend cautious buy for low balance {symbol} free KRW = {free_KRW}")
+            return
+
+        exchange.options['createMarketBuyOrderRequiresPrice']=False
+        resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
+
+        show_orderbook(orderbook)
+        price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        logging.info(f"Supertrend Cautious Buy Order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -812,6 +921,18 @@ def execute_supertrend_buy(exchange, symbol:str):
 
     if buy:
         supertrend_buy_coin(exchange, symbol)
+
+def execute_supertrend_cautious_buy(exchange, symbol:str):
+    buy = supertrend_cautious_buy[symbol]
+
+    if buy:
+        supertrend_cautious_buy_coin(exchange, symbol)
+
+def execute_supertrend_cautious_sell(exchange, symbol:str):
+    sell = supertrend_cautious_sell[symbol]
+
+    if sell:
+        supertrend_cautious_sell_coin(exchange, symbol)
 
 def monitor(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -950,6 +1071,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, doge)
     schedule.every(30).seconds.do(analyze_rsi_signals_3m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
+    schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, xrp)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
@@ -959,7 +1081,8 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_rsi_signals_3m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, xrp)
- 
+    schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, xrp)
+
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, sol)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, sol)
@@ -968,6 +1091,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, sol)
     schedule.every(30).seconds.do(analyze_rsi_signals_3m, exchange, sol)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, sol)
+    schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, sol)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, btc)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
@@ -977,6 +1101,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, btc)
     schedule.every(30).seconds.do(analyze_rsi_signals_3m, exchange, btc)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, btc)
+    schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, btc)
 
     schedule.every(30).seconds.do(analyze_signals_1d, exchange, eth)
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
@@ -986,6 +1111,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, eth)
     schedule.every(30).seconds.do(analyze_rsi_signals_3m, exchange, eth)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, eth)
+    schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, eth)
 
     #bollinger band order every 5 minutes with bollinger(5m) analysis
     schedule.every(5).minutes.do(execute_bollinger_order, exchange, doge)
@@ -1054,17 +1180,29 @@ if __name__=='__main__':
     schedule.every(1).hours.do(execute_stochrsi_4h_sell, exchange, btc)
     schedule.every(1).hours.do(execute_stochrsi_4h_sell, exchange, eth)
 
-    #supertrend order every 3 hours
-    schedule.every(3).hours.do(execute_supertrend_buy, exchange, doge)
-    schedule.every(3).hours.do(execute_supertrend_buy, exchange, xrp)
-    schedule.every(3).hours.do(execute_supertrend_buy, exchange, sol)
-    schedule.every(3).hours.do(execute_supertrend_buy, exchange, btc)
-    schedule.every(3).hours.do(execute_supertrend_buy, exchange, eth)
-    schedule.every(3).hours.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(3).hours.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(3).hours.do(execute_supertrend_sell, exchange, sol)
-    schedule.every(3).hours.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(3).hours.do(execute_supertrend_sell, exchange, eth)
+    #supertrend cautious buy/sell order every 1 hours
+    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, doge)
+    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, sol)
+    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, eth)
+    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, doge)
+    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, sol)
+    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, eth)
+
+    #supertrend order every 4 hours
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, sol)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_buy, exchange, eth)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(4).hours.do(execute_supertrend_sell, exchange, eth)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor, symbols)

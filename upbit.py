@@ -49,8 +49,8 @@ mfi_4h_scalping_sell_amount = 2000000
 mfi_4h_scalping_buy_amount  = 2000000
 
 # STOCHRSI 3 minutes amount 
-stochrsi_5m_sell_amount = 3000000
-stochrsi_5m_buy_amount  = 3000000
+stochrsi_5m_sell_amount = 1000000
+stochrsi_5m_buy_amount  = 1000000
 
 # 4 Hour stochrsi amount 
 stochrsi_4h_sell_amount = 4000000

@@ -38,24 +38,23 @@ bb_trading_amount = 2000000
 
 # RSI 3 minute scalping amount 
 rsi_3m_scalping_sell_amount = 3000000
-rsi_3m_scalping_buy_amount  = 3000000
+rsi_3m_scalping_buy_amount  = 1500000
 
 # MFI 5 minute scalping amount 
 mfi_5m_scalping_sell_amount = 2000000
-mfi_5m_scalping_buy_amount  = 2000000
+mfi_5m_scalping_buy_amount  = 1500000
 
 # MFI 4 hour scalping amount 
 mfi_4h_scalping_sell_amount = 2000000
-mfi_4h_scalping_buy_amount  = 2000000
+mfi_4h_scalping_buy_amount  = 1500000
 
-# STOCHRSI 3 minutes amount 
-stochrsi_5m_sell_amount = 1000000
-stochrsi_5m_buy_amount  = 1000000
+# STOCHRSI 5 minutes amount 
+stochrsi_5m_sell_amount = 3000000
+stochrsi_5m_buy_amount  = 1500000
 
 # 4 Hour stochrsi amount 
 stochrsi_4h_sell_amount = 4000000
-stochrsi_4h_buy_amount  = 4000000
-
+stochrsi_4h_buy_amount  = 2000000
 
 # RSI 3 minute buy and sell
 rsi_3m_sell = defaultdict(bool)
@@ -68,7 +67,7 @@ mfi_4h = defaultdict(float)
 rsi_3m_high_threshold = 70
 rsi_3m_low_threshold = 25
 rsi_low_threshold = 25
-rsi_high_threshold = 70 
+rsi_high_threshold = 70
 
 # MFI high low threshold
 mfi_high_threshold = 83

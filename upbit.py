@@ -31,7 +31,7 @@ mfi_5m_scalping_sell= defaultdict(bool)
 
 # scalping every 1 hour based on MFI(4h) indicator 
 mfi_4h_scalping_sell = defaultdict(bool)
-mfi_4h_scalping_buy = defaultdict(bool)
+mfi_4h_scalping_buy  = defaultdict(bool)
 
 # Bollinger band analysis based buy, sell amount
 bb_trading_amount = 2000000
@@ -59,7 +59,7 @@ stochrsi_4h_buy_amount  = 4000000
 
 # RSI 3 minute buy and sell
 rsi_3m_sell = defaultdict(bool)
-rsi_3m_buy = defaultdeict(bool)
+rsi_3m_buy  = defaultdict(bool)
 
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)

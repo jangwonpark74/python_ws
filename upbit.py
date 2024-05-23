@@ -379,7 +379,6 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
 
 def analyze_supertrend_1h(exchange, symbol: str)->None:
     try:
-        # upto 100 hour analyze supertrend 
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
@@ -387,7 +386,7 @@ def analyze_supertrend_1h(exchange, symbol: str)->None:
         df['mfi']      = talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
         df['rsi']      = talib.RSI(df['close'], timeperiod=14)
 
-        # cautious supertrend sell and buy with mfi and rsi guard 
+        # cautious supertrend sell and buy with mfi and rsi filter conditions 
         mfi = df['mfi'].iloc[-1]
         rsi = df['rsi'].iloc[-1]
 
@@ -422,7 +421,7 @@ def analyze_supertrend_1h(exchange, symbol: str)->None:
                 if (df['in_uptrend'][i] == False) and df['upperband'][i] > df['upperband'][p]:
                     df.loc[i, 'upperband'] = df.loc[p, 'upperband']
 
-        print(f'\n----------- Analyze supertrend(4h) --------------')
+        print(f'\n----------- Analyze supertrend(1h) --------------')
 
         pprint(df.iloc[-1])
 

@@ -21,7 +21,6 @@ bollinger_sell = defaultdict(bool)
 bollinger_threshold = defaultdict(float)
 bollinger_width = defaultdict(float)
 
-
 # Scalping every 3 minutes based on RSI(3m) indicator
 rsi_3m_scalping_buy = defaultdict(bool)
 rsi_3m_scalping_sell= defaultdict(bool)
@@ -42,26 +41,26 @@ rsi_3m_scalping_sell_amount = 3000000
 rsi_3m_scalping_buy_amount  = 3000000
 
 # MFI 5 minute scalping amount 
-mfi_5m_scalping_sell_amount = 2500000
-mfi_5m_scalping_buy_amount  = 2500000
+mfi_5m_scalping_sell_amount = 2000000
+mfi_5m_scalping_buy_amount  = 2000000
 
 # MFI 4 hour scalping amount 
 mfi_4h_scalping_sell_amount = 2000000
 mfi_4h_scalping_buy_amount  = 2000000
 
-# 15m stochrsi amount 
-stochrsi_5m_sell_amount = 4000000
-stochrsi_5m_buy_amount  = 4000000
+# STOCHRSI 3 minutes amount 
+stochrsi_5m_sell_amount = 3000000
+stochrsi_5m_buy_amount  = 3000000
 
 # 4 Hour stochrsi amount 
-stochrsi_4h_sell_amount = 2000000
-stochrsi_4h_buy_amount  = 2000000
+stochrsi_4h_sell_amount = 4000000
+stochrsi_4h_buy_amount  = 4000000
 
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
 
 # RSI 3m high low threshold
-rsi_3m_high_threshold = 70 
+rsi_3m_high_threshold = 70
 rsi_3m_low_threshold = 25
 rsi_low_threshold = 25
 
@@ -299,7 +298,6 @@ def analyze_mfi_signals_5m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-
 def analyze_rsi_signals_3m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='3m')
@@ -314,7 +312,7 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
 
         # Stoch rsi cross-over strategy
         sell = rsi_3m > rsi_3m_high_threshold
-        buy = rsi_3m < rsi_3m_low_threshold 
+        buy = rsi_3m < rsi_3m_low_threshold
 
         df['rsi_3m_sell'] = sell
         df['rsi_3m_buy'] = buy
@@ -330,7 +328,6 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
 
     except Exception as e:
         print("Exception : ", str(e))
-
 
 def analyze_stochrsi_4h(exchange, symbol: str)->None:
     try:
@@ -349,7 +346,7 @@ def analyze_stochrsi_4h(exchange, symbol: str)->None:
 
         # Stoch rsi cross-over strategy
         sell = current_stochrsi_k < current_stochrsi_d and current_stochrsi_k > overbought_threshold
-        buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold 
+        buy = current_stochrsi_k > current_stochrsi_d and current_stochrsi_k < oversold_threshold
 
         df['stochrsi_sell'] = sell
         df['stochrsi_buy'] = buy
@@ -417,13 +414,10 @@ def analyze_supertrend(exchange, symbol: str)->None:
         supertrend_sell[symbol] = (df.iloc[-2]['in_uptrend'] == True) and (df.iloc[-1]['in_uptrend'] == False)
 
         if supertrend_sell[symbol] == True:
-            supertrend_sell_iter[symbol] = 1 
+            supertrend_sell_iter[symbol] = 1
 
     except Exception as e:
         print("Exception : ", str(e))
-
-
-
 
 ## Todo monitor bitcoin trading for market sentiment estimation 
 ##    +1% change in 30 minutes : buy or binance call x5 order  

@@ -393,7 +393,7 @@ def analyze_supertrend_1h(exchange, symbol: str)->None:
 
         mfi_sell = mfi > (mfi_high_threshold - 15)
         mfi_buy = mfi < (mfi_low_threshold + 15)
-        rsi_sell = rsi > (rsi_high_thresold - 10)
+        rsi_sell = rsi > (rsi_high_threshold - 10)
         rsi_buy  = rsi < (rsi_low_threshold + 10)
 
         period = 14

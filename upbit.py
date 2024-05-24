@@ -41,11 +41,11 @@ rsi_3m_scalping_sell_amount = 3000000
 rsi_3m_scalping_buy_amount  = 2000000
 
 # MFI 5 minute scalping amount 
-mfi_5m_scalping_sell_amount = 2000000
+mfi_5m_scalping_sell_amount = 3000000
 mfi_5m_scalping_buy_amount  = 1000000
 
 # MFI 4 hour scalping amount 
-mfi_4h_scalping_sell_amount = 2000000
+mfi_4h_scalping_sell_amount = 4000000
 mfi_4h_scalping_buy_amount  = 2000000
 
 # STOCHRSI 5 minutes amount 

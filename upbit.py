@@ -321,8 +321,8 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
         df['signal'] = ta.ema(df['rsi'], length=9)
 
         # RSI 14 and Singal 9 cross-over based buy and sell implementation
-        df['rsi_3m_buy'] = np.where(((df['rsi']> df['signal']) & (df['rsi'].shift(1) <= df['signal'].shift(1)), True, False)
-        df['rsi_3m_sell'] = np.where(((df['rsi']< df['signal']) & (df['rsi'].shift(1) >= df['signal'].shift(1)), True, False)
+        df['rsi_3m_buy'] = np.where( (df['rsi']> df['signal']) and (df['rsi'].shift(1) <= df['signal'].shift(1)), True, False)
+        df['rsi_3m_sell'] = np.where( (df['rsi']< df['signal']) and (df['rsi'].shift(1) >= df['signal'].shift(1)), True, False)
 
         sell = df['rsi_3m_sell'].iloc[-1] 
         buy = df['rsi_3m_buy'].iloc[-1] 

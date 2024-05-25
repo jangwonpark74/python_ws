@@ -56,15 +56,15 @@ stochrsi_5m_buy_amount  = 1500000
 stochrsi_4h_sell_amount = 4000000
 stochrsi_4h_buy_amount  = 2000000
 
-# RSI 3 minute buy and sell
-rsi_3m_sell = defaultdict(bool)
-rsi_3m_buy  = defaultdict(bool)
+# RSI(14) one minute buy and sell
+rsi_1m_sell = defaultdict(bool)
+rsi_1m_buy  = defaultdict(bool)
 
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
 
 # RSI high low threshold
-rsi_1m_low_threshold = 25
+rsi_1m_low_threshold = 30 
 rsi_1m_high_threshold = 70
 rsi_low_threshold = 25
 rsi_high_threshold = 70
@@ -322,7 +322,7 @@ def analyze_rsi_signals_1m(exchange, symbol: str)->None:
         rsi = df['rsi'].iloc[-1]
 
         sell = rsi > rsi_1m_high_threshold
-        buy = rsi < ris_1m_low_threshold
+        buy = rsi < rsi_1m_low_threshold
 
         # update data for execution of order
         global rsi_1m_sell
@@ -587,7 +587,7 @@ def rsi_1m_scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (rsi_1m_scalping_buy_amount ):
             amount = (rsi_1m_scalping_buy_amount)
         else:
-            logging.info(f"Cancel RSI(3m) buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel RSI(14, @1m) buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -595,7 +595,7 @@ def rsi_1m_scalping_buy_coin(exchange,symbol: str)->None:
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"RSI(3m) scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"RSI(14, @1m) scalping buy order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -608,7 +608,7 @@ def mfi_5m_scalping_sell_coin(exchange, symbol: str):
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"MFI(5m) scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
+        logging.info(f"MFI(14, @5m) scalping sell order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -622,7 +622,7 @@ def mfi_5m_scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW > (mfi_5m_scalping_buy_amount ):
             amount = (mfi_5m_scalping_buy_amount)
         else:
-            logging.info(f"Cancel MFI(5m) buy for low balance {symbol} free KRW = {free_KRW}")
+            logging.info(f"Cancel MFI(14, @5m) buy for low balance {symbol} free KRW = {free_KRW}")
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
@@ -843,17 +843,17 @@ def execute_bollinger_order(exchange, symbol: str)->None:
     if (iterations[symbol] % 15 == 0):
        reset_bollinger_order(symbol)
 
-def execute_rsi_3m_buy_order(exchange, symbol: str)->None:
-    buy = rsi_3m_scalping_buy[symbol]
+def execute_rsi_1m_buy_order(exchange, symbol: str)->None:
+    buy = rsi_1m_scalping_buy[symbol]
 
     if buy:
-        rsi_3m_scalping_buy_coin(exchange, symbol)
+        rsi_1m_scalping_buy_coin(exchange, symbol)
 
-def execute_rsi_3m_sell_order(exchange, symbol: str)->None:
-    sell = rsi_3m_scalping_sell[symbol]
+def execute_rsi_1m_sell_order(exchange, symbol: str)->None:
+    sell = rsi_1m_scalping_sell[symbol]
 
     if sell:
-       rsi_3m_scalping_sell_coin(exchange, symbol)
+       rsi_1m_scalping_sell_coin(exchange, symbol)
 
 def execute_mfi_5m_buy_order(exchange, symbol: str)->None:
     buy = mfi_5m_scalping_buy[symbol]

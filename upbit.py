@@ -36,8 +36,8 @@ mfi_4h_scalping_buy  = defaultdict(bool)
 # Bollinger band analysis based buy, sell amount
 bb_trading_amount = 2000000
 
-# RSI 3 minute scalping amount 
-rsi_3m_scalping_sell_amount = 3000000
+# RSI(14) and Signal(9) crossover based scalping trading amount 
+rsi_3m_scalping_sell_amount = 2000000
 rsi_3m_scalping_buy_amount  = 2000000
 
 # MFI 5 minute scalping amount 
@@ -63,9 +63,7 @@ rsi_3m_buy  = defaultdict(bool)
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
 
-# RSI 3m high low threshold
-rsi_3m_high_threshold = 70
-rsi_3m_low_threshold = 25
+# RSI high low threshold
 rsi_low_threshold = 25
 rsi_high_threshold = 70
 
@@ -318,17 +316,16 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
+        # Calculate RSI(14) and Signal(9) with pandas-ta lib
         df['rsi'] = ta.rsi(df['close'], length=14)
+        df['signal'] = ta.ema(df['rsi'], length=9)
 
-        # Get the latest value
-        rsi_3m = df['rsi'].iloc[-1]
+        # RSI 14 and Singal 9 cross-over based buy and sell implementation
+        df['rsi_3m_buy'] = np.where(((df['rsi']> df['signal']) & (df['rsi'].shift(1) <= df['signal'].shift(1)), True, False)
+        df['rsi_3m_sell'] = np.where(((df['rsi']< df['signal']) & (df['rsi'].shift(1) >= df['signal'].shift(1)), True, False)
 
-        # Stoch rsi cross-over strategy
-        sell = rsi_3m > rsi_3m_high_threshold
-        buy = rsi_3m < rsi_3m_low_threshold
-
-        df['rsi_3m_sell'] = sell
-        df['rsi_3m_buy'] = buy
+        sell = df['rsi_3m_sell'].iloc[-1] 
+        buy = df['rsi_3m_buy'].iloc[-1] 
 
         # update data for execution of order
         global rsi_3m_sell
@@ -336,7 +333,7 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
         rsi_3m_sell[symbol] = sell
         rsi_3m_buy[symbol] = buy
 
-        print(f'\n----------- {symbol} RSI Signal Analysis (3 minutes) --------------')
+        print(f'\n----------- {symbol} RSI 14 and  Signal 9 Analysis (3 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

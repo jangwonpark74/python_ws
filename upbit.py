@@ -330,7 +330,7 @@ def analyze_rsi_signals_3m(exchange, symbol: str)->None:
         signal_shift_1 = df['signal_shift_1'].iloc[-1]
 
         sell = (rsi < signal) and (rsi_shift_1 >= signal_shift_1)
-        buy = (rsi > signal) and (rsi_shift_1 c <= signal_shift_1) 
+        buy  = (rsi > signal) and (rsi_shift_1 <= signal_shift_1) 
 
         # update data for execution of order
         global rsi_3m_sell

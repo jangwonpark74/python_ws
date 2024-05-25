@@ -36,8 +36,8 @@ mfi_4h_scalping_buy  = defaultdict(bool)
 bb_trading_amount = 2000000
 
 # rsi 1 minute scalping trading amount 
-rsi_1m_scalping_sell_amount = 4000000
-rsi_1m_scalping_buy_amount  = 2000000
+rsi_1m_scalping_sell_amount = 2000000
+rsi_1m_scalping_buy_amount  = 3000000
 
 # MFI 5 minute scalping amount 
 mfi_5m_scalping_sell_amount = 3000000

@@ -55,16 +55,12 @@ stochrsi_4h_buy_amount  = 4000000
 mfi_4h_scalping_sell_amount = 4000000
 mfi_4h_scalping_buy_amount  = 4000000
 
-# RSI(14) one minute buy and sell
-rsi_1m_sell = defaultdict(bool)
-rsi_1m_buy  = defaultdict(bool)
-
 # MFI 4 hour for volatility analysis
 mfi_4h = defaultdict(float)
 
 # RSI high low threshold
-rsi_1m_low_threshold = 30
-rsi_1m_high_threshold = 70
+rsi_1m_low_threshold = 27 
+rsi_1m_high_threshold = 73
 rsi_low_threshold = 25
 rsi_high_threshold = 70
 
@@ -324,10 +320,10 @@ def analyze_rsi_signals_1m(exchange, symbol: str)->None:
         buy = rsi < rsi_1m_low_threshold
 
         # update data for execution of order
-        global rsi_1m_sell
-        global rsi_1m_buy
-        rsi_1m_sell[symbol] = sell
-        rsi_1m_buy[symbol] = buy
+        global rsi_1m_scalping_sell
+        global rsi_1m_scalping_buy
+        rsi_1m_scalping_sell[symbol] = sell
+        rsi_1m_scalping_buy[symbol] = buy
 
         print(f'\n----------- {symbol} RSI(14) 1 minute Signal analysis  --------------')
         pprint(df.iloc[-1])

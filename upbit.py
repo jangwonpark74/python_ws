@@ -1237,7 +1237,7 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, btc)
     schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, eth)
 
-    # STOCHRSI (14, 14, 3, 3) based order at every 4 hour 
+    # STOCHRSI (14, 14, 3, 3) based order at every 2 hour 
     schedule.every(2).hours.do(execute_stochrsi_4h_buy, exchange, doge)
     schedule.every(2).hours.do(execute_stochrsi_4h_buy, exchange, xrp)
     schedule.every(2).hours.do(execute_stochrsi_4h_buy, exchange, sol)
@@ -1249,7 +1249,7 @@ if __name__=='__main__':
     schedule.every(2).hours.do(execute_stochrsi_4h_sell, exchange, btc)
     schedule.every(2).hours.do(execute_stochrsi_4h_sell, exchange, eth)
 
-    #supertrend cautious buy/sell order every 1 hours
+    #supertrend cautious buy/sell order every 4 hours
     schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, doge)
     schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, xrp)
     schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, sol)

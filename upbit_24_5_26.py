@@ -316,8 +316,10 @@ def analyze_rsi_signals_1m(exchange, symbol: str)->None:
 
         rsi = df['rsi'].iloc[-1]
 
+        in_supertrend_up = supertrend_up[symbol]
+
         sell = rsi > rsi_1m_high_threshold
-        buy = rsi < rsi_1m_low_threshold
+        buy = (rsi < rsi_1m_low_threshold) and in_supertrend_up
 
         # update data for execution of order
         global rsi_1m_scalping_sell

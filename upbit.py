@@ -807,7 +807,7 @@ def execute_rsi_10m_buy_order(exchange, symbol: str)->None:
         rsi_10m_scalping_buy_coin(exchange, symbol)
 
 def execute_rsi_10m_sell_order(exchange, symbol: str)->None:
-    sell = rsi_1m_scalping_sell[symbol]
+    sell = rsi_10m_scalping_sell[symbol]
 
     if sell:
        rsi_10m_scalping_sell_coin(exchange, symbol)

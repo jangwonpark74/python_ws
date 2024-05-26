@@ -43,6 +43,10 @@ mfi_5m_scalping_buy_amount  = 3000000
 stochrsi_5m_sell_amount = 3000000
 stochrsi_5m_buy_amount  = 3000000
 
+# STOCHRSI 30 minutes amount
+stochrsi_30m_sell_amount = 3000000
+stochrsi_30m_buy_amount  = 3000000
+
 # 4 Hour stochrsi amount 
 stochrsi_4h_sell_amount = 4000000
 stochrsi_4h_buy_amount  = 4000000
@@ -72,9 +76,17 @@ mfi_low_threshold  = 25
 overbought_threshold = 85
 oversold_threshold = 25
 
+# Momentum Trading 
+# 14 day will be lookback for momentm
+look_back_period = 14 
+
 # StochRSI(5m) sell buy every 5 minutes
 stochrsi_5m_sell = defaultdict(bool)
 stochrsi_5m_buy = defaultdict(bool)
+
+# StochRSI sell buy @ every 30 minutes
+stochrsi_30m_sell = defaultdict(bool)
+stochrsi_30m_buy = defaultdict(bool)
 
 # StochRSI (4h) sell buy every 1 hour 
 stochrsi_4h_sell = defaultdict(bool)
@@ -116,9 +128,14 @@ def reset_bollinger_order(symbol: str):
     bollinger_sell[symbol] = False
     bollinger_buy[symbol] = False
 
-def calc_volatility(x: float) -> float:
+def calculate_volatility(x: float) -> float:
     volatility = round(-0.0012 * x * x + 0.12 * x, 2)
     return volatility
+
+# calculate momentum
+def calculate_momentum(df, lookback_period=14):
+    momentum = df.pct_change(periods=lookback_period)
+    return momentum
 
 def analyze_historical_data(exchange, symbol:str):
     try:
@@ -213,7 +230,7 @@ def analyze_bb_signals_15m(exchange, symbol: str)->None:
 
         # sell, buy condition check
         mfi = mfi_4h[symbol] 
-        threshold = calc_volatility(mfi)
+        threshold = calculate_volatility(mfi)
         sell = (df['high'].iloc[-1] > df['bollinger_upper'].iloc[-1]) and (bb_width > threshold) 
         buy  = (df['low'].iloc[-1] < df['bollinger_lower'].iloc[-1]) and  (bb_width > threshold)
 
@@ -273,6 +290,43 @@ def analyze_stochrsi_5m(exchange, symbol: str)->None:
 
     except Exception as e:
         print("Exception : ", str(e))
+
+def analyze_stochrsi_30m(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        stochrsi = ta.stochrsi(df['close'], length=14, fastk_period=3, fastd_period=3, append=True)
+
+        df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
+        df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
+ 
+        # Get the latest value
+        current_stochrsi_k = df['stochrsi_k'].iloc[-1]
+        current_stochrsi_d = df['stochrsi_d'].iloc[-1]
+
+        # Stoch rsi cross-over strategy
+        sell = (current_stochrsi_k < current_stochrsi_d) and (current_stochrsi_k > overbought_threshold)
+        buy  = (current_stochrsi_k > current_stochrsi_d) and (current_stochrsi_k < oversold_threshold)
+
+        df['stochrsi_sell'] = sell
+        df['stochrsi_buy']  = buy
+
+        # update data for execution of order
+        global stochrsi_30m_sell
+        global stochrsi_30m_buy
+        stochrsi_30m_sell[symbol] = sell
+        stochrsi_30m_buy[symbol] = buy
+
+        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (30 minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+
 
 def analyze_mfi_signals_5m(exchange, symbol: str)->None:
     try:
@@ -663,6 +717,43 @@ def stochrsi_5m_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
+
+def stochrsi_30m_sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+        amount    = round((stochrsi_30m_sell_amount)/price, 3)
+        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
+
+        show_orderbook(orderbook)
+        logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_5m_sell_amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+
+        amount = 0.0
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        if free_KRW > stochrsi_30m_buy_amount:
+            amount = stochrsi_30m_buy_amount
+        else:
+            logging.info(f"Cancel STOCHRSI (30m) buy for low balance {symbol} free KRW = {free_KRW}")
+            return
+
+        exchange.options['createMarketBuyOrderRequiresPrice']=False
+        resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
+
+        show_orderbook(orderbook)
+        price = round(orderbook['asks'][0][0], 1)
+        logging.info(f"STOCHRSI(30m) buy order placed for {symbol} at price: {price}, amount = {amount}")
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
 def stochrsi_4h_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
@@ -675,7 +766,6 @@ def stochrsi_4h_sell_coin(exchange, symbol: str):
 
     except Exception as e:
         print("Exception : ", str(e))
-
 
 def stochrsi_4h_buy_coin(exchange,symbol: str)->None:
     try:
@@ -848,6 +938,18 @@ def execute_stochrsi_5m_buy(exchange, symbol: str)->None:
     if buy:
         stochrsi_5m_buy_coin(exchange, symbol)
 
+def execute_stochrsi_30m_sell(exchange, symbol: str)->None:
+    sell = stochrsi_30m_sell[symbol]
+
+    if sell:
+       stochrsi_30m_sell_coin(exchange, symbol)
+
+def execute_stochrsi_30m_buy(exchange, symbol: str)->None:
+    buy = stochrsi_30m_buy[symbol]
+
+    if buy:
+        stochrsi_30m_buy_coin(exchange, symbol)
+
 def execute_stochrsi_4h_sell(exchange, symbol: str)->None:
     sell = stochrsi_4h_sell[symbol] 
 
@@ -1017,6 +1119,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, doge)
+    schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, doge)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, doge)
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, doge)
@@ -1027,6 +1130,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, xrp)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, xrp)
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, xrp)
@@ -1037,6 +1141,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, sol)
     schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, sol)
+    schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, sol)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, sol)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, sol)
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, sol)
@@ -1047,6 +1152,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, btc)
     schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, btc)
+    schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, btc)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, btc)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, btc)
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, btc)
@@ -1057,6 +1163,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_signals_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_bb_signals_15m, exchange, eth)
     schedule.every(30).seconds.do(analyze_stochrsi_5m, exchange, eth)
+    schedule.every(30).seconds.do(analyze_stochrsi_30m, exchange, eth)
     schedule.every(30).seconds.do(analyze_stochrsi_4h, exchange, eth)
     schedule.every(30).seconds.do(analyze_mfi_signals_5m, exchange, eth)
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, eth)
@@ -1117,6 +1224,19 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, sol)
     schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, btc)
     schedule.every(5).minutes.do(execute_stochrsi_5m_sell, exchange, eth)
+
+    # STOCHRSI(14, 14, 3, 3) based scalping at every 30 minutes
+    schedule.every(30).minutes.do(execute_stochrsi_30m_buy, exchange, doge)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_buy, exchange, xrp)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_buy, exchange, sol)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_buy, exchange, btc)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_buy, exchange, eth)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, doge)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, xrp)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, sol)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, btc)
+    schedule.every(30).minutes.do(execute_stochrsi_30m_sell, exchange, eth)
+
 
     # STOCHRSI (14, 14, 3, 3) based order at every 4 hour 
     schedule.every(1).hours.do(execute_stochrsi_4h_buy, exchange, doge)

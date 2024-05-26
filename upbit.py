@@ -285,7 +285,7 @@ def analyze_stochrsi_10m(exchange, symbol: str)->None:
         stochrsi_10m_sell[symbol] = sell
         stochrsi_10m_buy[symbol] = buy
 
-        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (5 minutes) --------------')
+        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (10 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

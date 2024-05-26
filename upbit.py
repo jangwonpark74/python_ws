@@ -80,6 +80,10 @@ oversold_threshold = 25
 # 14 day will be lookback for momentm
 look_back_period = 14 
 
+
+# MFI(5m) for supertrend guard 
+mfi_5m_supertrend_guard = defaultdict(float)
+
 # StochRSI(10m) sell buy decision 
 stochrsi_10m_sell = defaultdict(bool)
 stochrsi_10m_buy = defaultdict(bool)
@@ -105,8 +109,8 @@ supertrend_up = defaultdict(bool)
 supertrend_buy = defaultdict(bool)
 supertrend_sell = defaultdict(bool)
 
-# supertrend buy amount at every 4 hour
-supertrend_buy_amount = 2000000
+# supertrend buy amount at every 2 hour
+supertrend_buy_amount = 1000000
 
 # Supertrend cautious buy, sell at every 1 hour 
 # if MFI/RSI guard condition is true
@@ -340,6 +344,9 @@ def analyze_mfi_signals_5m(exchange, symbol: str)->None:
         # Scalping based on 5 minutes MFI  
         mfi = df['mfi'].iloc[-1]
         rsi = df['rsi'].iloc[-1]
+
+        global mfi_5m_supertrend_guard
+        mfi_5m_supertrend_guard[symbol] = mfi
 
         sell = mfi > mfi_high_threshold
         buy  = (mfi < mfi_low_threshold) | (rsi < rsi_low_threshold)
@@ -846,6 +853,12 @@ def supertrend_cautious_sell_coin(exchange, symbol: str):
         amount    = round((supertrend_cautious_order_amount)/price, 3)
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        mfi = mfi_5m_supertrend_guard[symbol]
+
+        if mfi < 50 :
+            logging.info(f"Cancel Supertrend Cautious Sell : Underbought 5 minute mfi < 50")
+            return
+
         show_orderbook(orderbook)
         logging.info(f"Supertrend Cautious Sell Order placed for {symbol} at price: {price}, amount = {supertrend_cautious_order_amount}")
 
@@ -863,6 +876,11 @@ def supertrend_cautious_buy_coin(exchange, symbol: str):
         else:
             logging.info(f"Cancel supertrend cautious buy for low balance {symbol} free KRW = {free_KRW}")
             return
+ 
+        mfi = mfi_5m_supertrend_guard[symbol]
+        if mfi > 70 :
+            logging.info(f"Cancel Supertrend Cautious Buy: Overbought 5 minute mfi > 70")
+            return 
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
         resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
@@ -1249,29 +1267,29 @@ if __name__=='__main__':
     schedule.every(2).hours.do(execute_stochrsi_4h_sell, exchange, btc)
     schedule.every(2).hours.do(execute_stochrsi_4h_sell, exchange, eth)
 
-    #supertrend cautious buy/sell order every 4 hours
-    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_cautious_buy, exchange, eth)
-    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_cautious_sell, exchange, eth)
+    #supertrend cautious buy/sell order every 1 hours
+    schedule.every(1).hours.do(execute_supertrend_cautious_buy, exchange, doge)
+    schedule.every(1).hours.do(execute_supertrend_cautious_buy, exchange, xrp)
+    schedule.every(1).hours.do(execute_supertrend_cautious_buy, exchange, sol)
+    schedule.every(1).hours.do(execute_supertrend_cautious_buy, exchange, btc)
+    schedule.every(1).hours.do(execute_supertrend_cautious_buy, exchange, eth)
+    schedule.every(1).hours.do(execute_supertrend_cautious_sell, exchange, doge)
+    schedule.every(1).hours.do(execute_supertrend_cautious_sell, exchange, xrp)
+    schedule.every(1).hours.do(execute_supertrend_cautious_sell, exchange, sol)
+    schedule.every(1).hours.do(execute_supertrend_cautious_sell, exchange, btc)
+    schedule.every(1).hours.do(execute_supertrend_cautious_sell, exchange, eth)
 
-    #supertrend order every 4 hours
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_buy, exchange, eth)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, sol)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(4).hours.do(execute_supertrend_sell, exchange, eth)
+    #supertrend order every 1 hours
+    schedule.every(1).hours.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(1).hours.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(1).hours.do(execute_supertrend_buy, exchange, sol)
+    schedule.every(1).hours.do(execute_supertrend_buy, exchange, btc)
+    schedule.every(1).hours.do(execute_supertrend_buy, exchange, eth)
+    schedule.every(1).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(1).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(1).hours.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(1).hours.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(1).hours.do(execute_supertrend_sell, exchange, eth)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor, symbols)

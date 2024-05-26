@@ -73,7 +73,7 @@ mfi_high_threshold = 83
 mfi_low_threshold  = 25
 
 # Define parameters for Stochastic RSI
-overbought_threshold = 85
+overbought_threshold = 83 
 oversold_threshold = 25
 
 # Momentum Trading 

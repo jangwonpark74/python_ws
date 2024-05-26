@@ -78,7 +78,7 @@ oversold_threshold = 25
 
 # Pullback stratey 
 pullback_price_ratio = 0.035
-pullback_portion     = 0.035
+pullback_portion     = 0.35
 
 # MFI(5m) for supertrend guard 
 mfi_5m_supertrend_guard = defaultdict(float)

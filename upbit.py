@@ -546,9 +546,9 @@ def show_orderbook(orderbook):
         pprint(orderbook)
 
 def pullback_order(exchange, symbol, amount, price):
-        price  = price * (1-pullback_price_ratio)
-        amount = (amount*pullback_portion)/price
-        time.sleep(0.1)
+        price  = round(price * (1-pullback_price_ratio), 1)
+        amount = round((amount*pullback_portion)/price, 6)
+        time.sleep(1)
         resp = exchange.create_limit_buy_order(symbol = symbol, amount = amount, price = price)
         return price, amount
 

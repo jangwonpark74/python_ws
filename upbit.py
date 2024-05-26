@@ -76,10 +76,9 @@ mfi_low_threshold  = 25
 overbought_threshold = 85
 oversold_threshold = 25
 
-# Momentum Trading 
-# 14 day will be lookback for momentm
-look_back_period = 14 
-
+# Pullback stratey 
+pullback_price_ratio = 0.035
+pullback_portion     = 0.035
 
 # MFI(5m) for supertrend guard 
 mfi_5m_supertrend_guard = defaultdict(float)
@@ -546,6 +545,13 @@ def show_orderbook(orderbook):
         print("\n------------Getting order book -----------")
         pprint(orderbook)
 
+def pullback_order(exchange, symbol, amount, price):
+        price  = price * (1-pullback_price_ratio)
+        amount = (amount*pullback_portion)/price
+        time.sleep(0.1)
+        resp = exchange.create_limit_buy_order(symbol = symbol, amount = amount, price = price)
+        return price, amount
+
 def bollinger_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
@@ -556,6 +562,9 @@ def bollinger_sell_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         logging.info(f"Bollinger sell : {symbol}, price={price}, amount={bb_trading_amount},\
                      threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
+
+        price, amount = pullback_order(exchange, symbol, amount=bb_trading_amount, price=price)
+        logging.info(f"Bollinger pullback order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -593,6 +602,9 @@ def rsi_10m_scalping_sell_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         logging.info(f"RSI(14, @10m) scalping sell order placed for {symbol} at price: {price}, amount = {rsi_1m_scalping_sell_amount}")
 
+        price, amount = pullback_order(exchange, symbol, amount=rsi_10m_scalping_sell_amount, price=price)
+        logging.info(f"RSI(10m) pullback order placed for {symbol} at price: {price}, amount = {amount}")
+
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -627,6 +639,9 @@ def mfi_5m_scalping_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         logging.info(f"MFI(14, @5m) scalping sell order placed for {symbol} at price: {price}, amount = {mfi_5m_scalping_sell_amount}")
+
+        price, amount = pullback_order(exchange, symbol, amount=mfi_5m_scalping_sell_amount, price=price)
+        logging.info(f"MFI(5m) pullback order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -663,6 +678,9 @@ def mfi_4h_scalping_sell_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         logging.info(f"MFI(4h) scalping sell order placed for {symbol} at price: {price}, amount = {mfi_4h_scalping_sell_amount}")
 
+        price, amount = pullback_order(exchange, symbol, amount=mfi_4h_scalping_sell_amount, price=price)
+        logging.info(f"MFI(4h) pullback order placed for {symbol} at price: {price}, amount = {amount}")
+
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -697,6 +715,9 @@ def stochrsi_10m_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         logging.info(f"Stochrsi(10m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_5m_sell_amount}")
+
+        price, amount = pullback_order(exchange, symbol, amount=stochrsi_10m_sell_amount, price=price)
+        logging.info(f"Stochrsi(10m) pullback order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -735,6 +756,9 @@ def stochrsi_30m_sell_coin(exchange, symbol: str):
         show_orderbook(orderbook)
         logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_5m_sell_amount}")
 
+        price, amount = pullback_order(exchange, symbol, amount=stochrsi_30m_sell_amount, price=price)
+        logging.info(f"Stochrsi(30m) pullback order placed for {symbol} at price: {price}, amount = {amount}")
+
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -770,6 +794,9 @@ def stochrsi_4h_sell_coin(exchange, symbol: str):
 
         show_orderbook(orderbook)
         logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_4h_sell_amount}")
+
+        price, amount = pullback_order(exchange, symbol, amount=stochrsi_4h_sell_amount, price=price)
+        logging.info(f"Stochrsi(4h) pullback order placed for {symbol} at price: {price}, amount = {amount}")
 
     except Exception as e:
         print("Exception : ", str(e))

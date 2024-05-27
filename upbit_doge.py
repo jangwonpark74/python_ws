@@ -63,7 +63,7 @@ mfi_4h_scalping_buy_amount  = 4000000
 mfi_4h = defaultdict(float)
 
 # RSI high low threshold
-rsi_10m_low_threshold  = 30 
+rsi_10m_low_threshold  = 30
 rsi_10m_high_threshold = 70
 rsi_low_threshold  = 30 
 rsi_high_threshold = 70

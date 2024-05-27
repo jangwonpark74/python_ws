@@ -36,8 +36,8 @@ mfi_4h_scalping_buy  = defaultdict(bool)
 bb_trading_amount = 2000000
 
 # MFI 5 minute scalping amount 
-mfi_5m_scalping_sell_amount = 3000000
-mfi_5m_scalping_buy_amount  = 3000000
+mfi_5m_scalping_sell_amount = 5000000
+mfi_5m_scalping_buy_amount  = 5000000
 
 # STOCHRSI 10 minutes amount 
 stochrsi_10m_sell_amount = 3000000
@@ -63,9 +63,9 @@ mfi_4h_scalping_buy_amount  = 4000000
 mfi_4h = defaultdict(float)
 
 # RSI high low threshold
-rsi_10m_low_threshold  = 30 
-rsi_10m_high_threshold = 70 
-rsi_low_threshold  = 25
+rsi_10m_low_threshold  = 30
+rsi_10m_high_threshold = 70
+rsi_low_threshold  = 30 
 rsi_high_threshold = 70
 
 # MFI high low threshold
@@ -77,7 +77,7 @@ overbought_threshold = 85
 oversold_threshold = 25
 
 # Pullback stratey 
-pullback_price_ratio = 0.035
+pullback_price_ratio = 0.02
 pullback_portion     = 0.5
 
 # MFI(5m) for supertrend guard 
@@ -1153,7 +1153,7 @@ if __name__=='__main__':
     logging.basicConfig(filename="./trading.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     exchange = init_upbit()
-    binance = init_binance()
+#   binance = init_binance()
 
     #define symbols 
     doge = "DOGE/KRW"

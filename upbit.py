@@ -36,8 +36,8 @@ mfi_4h_scalping_buy  = defaultdict(bool)
 bb_trading_amount = 2000000
 
 # MFI 5 minute scalping amount 
-mfi_5m_scalping_sell_amount = 3000000
-mfi_5m_scalping_buy_amount  = 3000000
+mfi_5m_scalping_sell_amount = 5000000
+mfi_5m_scalping_buy_amount  = 5000000
 
 # STOCHRSI 10 minutes amount 
 stochrsi_10m_sell_amount = 3000000
@@ -139,6 +139,11 @@ def calculate_volatility(x: float) -> float:
 def calculate_momentum(df, lookback_period=14):
     momentum = df.pct_change(periods=lookback_period)
     return momentum
+
+# calculate signal 
+def calculate_signal(mfi, period=9):
+    signal = mfi.rolling(window=period).mean()
+    return signal
 
 def analyze_historical_data(exchange, symbol:str):
     try:
@@ -329,8 +334,6 @@ def analyze_stochrsi_30m(exchange, symbol: str)->None:
     except Exception as e:
         print("Exception : ", str(e))
 
-
-
 def analyze_mfi_signals_5m(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
@@ -339,16 +342,21 @@ def analyze_mfi_signals_5m(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
         df['rsi']      = round(talib.RSI(df['close'], timeperiod=14), 2)
+        df['signal'] = calculate_signal(df['mfi'])
 
         # Scalping based on 5 minutes MFI  
-        mfi = df['mfi'].iloc[-1]
-        rsi = df['rsi'].iloc[-1]
+        rsi = df['mfi'].iloc[-1]
+        current_mfi    = df['mfi'].iloc[-1]
+        current_signal = df['signal'].iloc[-1]
+
+        previous_mfi    = df['mfi'].iloc[-2]
+        previous_signal = df['signal'].iloc[-2]
 
         global mfi_5m_supertrend_guard
-        mfi_5m_supertrend_guard[symbol] = mfi
+        mfi_5m_supertrend_guard[symbol] = current_mfi
 
-        sell = mfi > mfi_high_threshold
-        buy  = (mfi < mfi_low_threshold) | (rsi < rsi_low_threshold)
+        sell = (current_mfi > 70) and (rsi > 70) and (previous_mfi > previous_signal ) and ( current_mfi < current_signal) 
+        buy  = (current_mfi < 30) and (rsi < 30) and (previous_mfi < previous_signal ) and ( current_mfi > current_signal)
 
         # update data for execution of order
         global mfi_5m_scalping_sell
@@ -360,7 +368,7 @@ def analyze_mfi_signals_5m(exchange, symbol: str)->None:
         df['mfi_5m_scalping_sell'] = sell
         df['mfi_5m_scalping_buy']  = buy
 
-        print(f'\n----------- {symbol} Signal Analysis (10 minutes) --------------')
+        print(f'\n----------- {symbol} MFI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

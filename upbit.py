@@ -69,7 +69,7 @@ rsi_low_threshold  = 25
 rsi_high_threshold = 70
 
 # MFI high low threshold
-mfi_high_threshold = 83
+mfi_high_threshold = 80
 mfi_low_threshold  = 25
 
 # Define parameters for Stochastic RSI
@@ -342,27 +342,22 @@ def analyze_mfi_signals_5m(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
         df['mfi']      = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 2)
         df['rsi']      = round(talib.RSI(df['close'], timeperiod=14), 2)
-        df['signal'] = calculate_signal(df['mfi'])
 
         # Scalping based on 5 minutes MFI  
-        rsi = df['mfi'].iloc[-1]
-        current_mfi    = df['mfi'].iloc[-1]
-        current_signal = df['signal'].iloc[-1]
-
-        previous_mfi    = df['mfi'].iloc[-2]
-        previous_signal = df['signal'].iloc[-2]
+        mfi = df['mfi'].iloc[-1]
+        rsi = df['rsi'].iloc[-1]
 
         global mfi_5m_supertrend_guard
-        mfi_5m_supertrend_guard[symbol] = current_mfi
+        mfi_5m_supertrend_guard[symbol] = mfi
 
-        sell = (current_mfi > 70) and (rsi > 70) and (previous_mfi > previous_signal ) and ( current_mfi < current_signal) 
-        buy  = (current_mfi < 30) and (rsi < 30) and (previous_mfi < previous_signal ) and ( current_mfi > current_signal)
+        sell =  mfi > mfi_high_threshold
+        buy  = (mfi < mfi_low_threshold) or ( rsi < 30 )
 
         # update data for execution of order
         global mfi_5m_scalping_sell
         global mfi_5m_scalping_buy
         mfi_5m_scalping_sell[symbol] = sell
-        mfi_5m_scalping_buy[symbol] = buy
+        mfi_5m_scalping_buy[symbol]  = buy
 
         # store information for dispaly
         df['mfi_5m_scalping_sell'] = sell

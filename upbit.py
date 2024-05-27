@@ -523,11 +523,13 @@ def analyze_supertrend(exchange, symbol: str)->None:
 
         pprint(df.iloc[-1])
 
+        is_supertrend_up = df.iloc[-1]['in_uptrend'] 
+
         global supertrend_up
-        supertrend_up[symbol] = df.iloc[-1]['in_uptrend']
+        supertrend_up[symbol] = is_supertrend_up 
 
         global supertrend_buy
-        supertrend_buy[symbol] = df.iloc[-1]['in_uptrend']
+        supertrend_buy[symbol] = is_supertrend_up 
 
         if supertrend_buy[symbol] == True:
             supertrend_sell_quota[symbol] = 4000000

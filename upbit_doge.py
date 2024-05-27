@@ -719,7 +719,7 @@ def stochrsi_10m_sell_coin(exchange, symbol: str):
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi(10m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_5m_sell_amount}")
+        logging.info(f"Stochrsi(10m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_10m_sell_amount}")
 
         price, amount = pullback_order(exchange, symbol, amount=stochrsi_10m_sell_amount, price=price)
         logging.info(f"Stochrsi(10m) pullback order placed for {symbol} at price: {price}, amount = {amount}")
@@ -759,7 +759,7 @@ def stochrsi_30m_sell_coin(exchange, symbol: str):
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_5m_sell_amount}")
+        logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_30m_sell_amount}")
 
         price, amount = pullback_order(exchange, symbol, amount=stochrsi_30m_sell_amount, price=price)
         logging.info(f"Stochrsi(30m) pullback order placed for {symbol} at price: {price}, amount = {amount}")

@@ -6,6 +6,9 @@ import schedule
 import talib
 import time
 import random
+import heapq
+
+from heapq import heappop, heappush 
 
 from pprint import pprint
 from collections import defaultdict
@@ -124,6 +127,19 @@ supertrend_sell_quota = defaultdict(float)
 supertrend_sell_amount = defaultdict(float)
 
 pd.set_option('display.max_rows', None)
+
+
+# Todo PullbackOrder based pullback processing utilizing max-heap
+class PullbackOrder:
+    def __init__(self, price, amount):
+        self.price = price
+        self.amount = amount
+
+    def __lt__(self, other):
+        return self.price > other.price
+
+    def __repr__(self):
+        retrun f'(PullbackOrder : Price= {self.price}, amount = {self.amount} )'
 
 def reset_bollinger_order(symbol: str):
     global bollinger_sell

@@ -5,6 +5,7 @@ import pandas_ta as ta
 import schedule
 import talib
 import time
+import random
 
 from pprint import pprint
 from collections import defaultdict
@@ -77,8 +78,7 @@ overbought_threshold = 85
 oversold_threshold = 25
 
 # Pullback stratey 
-pullback_price_ratio = 0.02
-pullback_portion     = 0.4
+pullback_portion     = 0.6
 
 # MFI(5m) for supertrend guard 
 mfi_5m_supertrend_guard = defaultdict(float)
@@ -551,7 +551,8 @@ def show_orderbook(orderbook):
         pprint(orderbook)
 
 def pullback_order(exchange, symbol, amount, price):
-        price  = round(price * (1-pullback_price_ratio), 1)
+        pullpack_pct = 0.01 * random.randint(1,4)
+        price  = round(price * (1-pullback_pct), 1)
         amount = round((amount*pullback_portion)/price, 6)
         time.sleep(1)
         resp = exchange.create_limit_buy_order(symbol = symbol, amount = amount, price = price)

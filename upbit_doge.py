@@ -140,10 +140,16 @@ class PullBack:
     def __lt__(self, other):
         return self.price> other.price
 
+    def __repr__(self):
+        return f"PullBack: price ={self.price}, amount={self.amount}"
+
+# pullback data store 
+# utilized pickle for pullback_map
 def save_data(filename, data=pullback_map):
     with open(filename, 'wb') as file:
         pickle.dump(data, file)
 
+# pullback data load
 def load_data(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
@@ -603,9 +609,10 @@ def execute_pullback_buy(exchange, symbol):
         print("------------------ Inside execute_pullback_buy ---------------")
         global pullback_map
         if len(pullback_map[symbol]) == 0 :
-           print("pullback_map lengh is zero")
+           print(f"pullback_map[{symbol}] -  heapq lengh is zero")
            return
 
+        logging.info(f"pullback data {pullback_map[symbol]}")
         orderbook = exchange.fetch_order_book(symbol)
         current_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
 
@@ -629,7 +636,7 @@ def execute_pullback_buy(exchange, symbol):
 
            #After updating save_data to file
            save_data(pullback_data_file, pullback_map)
-           logging.info("Pullback file saved to {pullback_data_file}")
+           logging.info(f"Pullback file saved to {pullback_data_file}")
 
         else:
            print(f"Current price {current_price} is higher than highest order price {order_price}")

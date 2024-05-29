@@ -2,13 +2,14 @@ import ccxt
 import logging
 import pandas as pd
 import pandas_ta as ta
+import pickle
 import schedule
 import talib
 import time
 import random
-import heapq
-
-from heapq import heappop, heappush 
+import heapq as hq
+from heapq import heappop, heappush
+from dataclasses import dataclass
 
 from pprint import pprint
 from collections import defaultdict
@@ -81,7 +82,11 @@ overbought_threshold = 85
 oversold_threshold = 25
 
 # Pullback stratey 
-pullback_portion     = 0.6
+pullback_map = defaultdict(list)
+pullback_portion = 0.6
+
+# Pullback data store filename
+pullback_data_file = 'pullback_info.pkl'
 
 # MFI(5m) for supertrend guard 
 mfi_5m_supertrend_guard = defaultdict(float)
@@ -128,18 +133,20 @@ supertrend_sell_amount = defaultdict(float)
 
 pd.set_option('display.max_rows', None)
 
-
-# Todo PullbackOrder based pullback processing utilizing max-heap
-class PullbackOrder:
-    def __init__(self, price, amount):
-        self.price = price
-        self.amount = amount
-
+@dataclass
+class PullBack:
+    price: float
+    amount: float
     def __lt__(self, other):
-        return self.price > other.price
+        return self.price> other.price
 
-    def __repr__(self):
-        retrun f'(PullbackOrder : Price= {self.price}, amount = {self.amount} )'
+def save_data(filename, data=pullback_map):
+    with open(filename, 'wb') as file:
+        pickle.dump(data, file)
+
+def load_data(filename):
+    with open(filename, 'rb') as file:
+        return pickle.load(file)
 
 def reset_bollinger_order(symbol: str):
     global bollinger_sell
@@ -563,30 +570,86 @@ def analyze_supertrend(exchange, symbol: str)->None:
         print("Exception : ", str(e))
 
 def show_orderbook(orderbook):
-        print("\n------------Getting order book -----------")
-        pprint(orderbook)
+    print("\n------------Getting order book -----------")
+    pprint(orderbook)
 
-def pullback_order(exchange, symbol, amount, price):
-        pullpack_pct = 0.01 * random.randint(1,4)
-        price  = round(price * (1-pullback_pct), 1)
-        amount = round((amount*pullback_portion)/price, 6)
-        time.sleep(1)
-        resp = exchange.create_limit_buy_order(symbol = symbol, amount = amount, price = price)
-        return price
+
+def init_pullback_map(filename):
+    doge = "DOGE/KRW"
+
+    global pullback_map
+    pullback_map[doge] =[]
+    save_data(filename, pullback_map)
+
+def load_pullback_data(filename):
+    try:
+        pullback_map = load_data(filename)
+    except FileNotFoundError:
+        init_pullback_map(filename)
+
+def backlog_pullback(symbol, price, amount):
+    pct = round(random.uniform(0.015, 0.05), 2)
+    pullback_price  = round(price * (1- pullback_pct ), 1)
+    logging.info(f"Backlog pullback for {symbol}, price= {pullback_price}, percentage= {pct}, amount={amount}")
+
+    global pullback_map
+    hq.heappush(pullback_map[symbol], PullBack(price, amount))
+
+    #After updating save_data to file
+    save_data(pullback_data_file, pullback_map)
+
+def execute_pullback_buy(exchange, symbol):
+    try:
+        print("------------------ Inside execute_pullback_buy ---------------")
+        global pullback_map
+        if len(pullback_map[symbol]) == 0 :
+           print("pullback_map lengh is zero")
+           return
+
+        orderbook = exchange.fetch_order_book(symbol)
+        current_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
+
+        item = pullback_map[symbol][0]
+        order_price = round(item.price, 1)
+        pullback_amount = round(item.amount, 5)
+        order_amount = round(pullback_amount/order_price, 5)
+        print(f"execute pullback buy : item order_price: {order_price}, pullback amount= {pullback_amount}")
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        if free_KRW <(pullback_amount ):
+           logging.info(f"Cancel pullback buy for low balance {symbol} free KRW = {free_KRW}")
+           return
+
+        if current_price < order_price:
+           resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = order_price)
+           logging.info(f"Pullback buy order for {symbol} at price: {price}, amount = {amount}")
+
+           hq.heappop(pullback_map[symbol])
+
+           #After updating save_data to file
+           save_data(pullback_data_file, pullback_map)
+           logging.info("Pullback file saved to {pullback_data_file}")
+
+        else:
+           print(f"Current price {current_price} is higher than highest order price {order_price}")
+           return
+
+    except Exception as e:
+        print("Exception : ", str(e))
 
 def bollinger_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = bb_trading_amount
         orderbook = exchange.fetch_order_book(symbol)
         price  = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount = round((bb_trading_amount)/ price, 5)
+        amount = round((bb_trading_amount)/price, 5)
         resp   = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        logging.info(f"Bollinger sell:{symbol}, price={price}, amount={sell_amount}, threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
+        backlog_pullback(symbol, price, sell_amount)
         show_orderbook(orderbook)
-        logging.info(f"Bollinger sell : {symbol}, price={price}, amount={bb_trading_amount},\
-                     threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
 
-        price = pullback_order(exchange, symbol, amount=bb_trading_amount, price=price)
-        logging.info(f"Bollinger pullback order for {symbol} at price: {price}, amount = {bb_trading_amount * pullback_portion}")
     except Exception as e:
         print("Exception : ", str(e))
 
@@ -603,28 +666,26 @@ def bollinger_buy_coin(exchange,symbol: str)->None:
             return
 
         exchange.options['createMarketBuyOrderRequiresPrice']=False
-        resp = exchange.create_market_sell_order(symbol = symbol, amount = amount)
+        resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
 
         show_orderbook(orderbook)
         price = round(orderbook['asks'][0][0], 1)
-        logging.info(f"Bollinger buy :{symbol}, price={price}, amount = {amount}, \
-                     threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
+        logging.info(f"Bollinger buy :{symbol}, price={price}, amount = {amount}, threshold={bollinger_threshold[symbol]}, width={bollinger_width[symbol]}, mfi_4h={mfi_4h[symbol]}")
 
     except Exception as e:
         print("Exception : ", str(e))
 
 def rsi_10m_scalping_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = rsi_10m_scalping_sell_amount
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((rsi_10m_scalping_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 5)
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        logging.info(f"RSI(14, @10m) scalping sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount)
         show_orderbook(orderbook)
-        logging.info(f"RSI(14, @10m) scalping sell order placed for {symbol} at price: {price}, amount = {rsi_1m_scalping_sell_amount}")
-
-        price = pullback_order(exchange, symbol, amount=rsi_10m_scalping_sell_amount, price=price)
-        logging.info(f"RSI(10m) pullback order for {symbol} at price: {price}, amount = {rsi_10m_scalping_sell_amount * pullback_portion}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -653,16 +714,15 @@ def rsi_10m_scalping_buy_coin(exchange,symbol: str)->None:
 
 def mfi_5m_scalping_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = mfi_5m_scalping_sell_amount
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((mfi_5m_scalping_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 3)
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        logging.info(f"MFI(14, @5m) scalping sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount )
         show_orderbook(orderbook)
-        logging.info(f"MFI(14, @5m) scalping sell order placed for {symbol} at price: {price}, amount = {mfi_5m_scalping_sell_amount}")
-
-        price = pullback_order(exchange, symbol, amount=mfi_5m_scalping_sell_amount, price=price)
-        logging.info(f"MFI(5m) pullback order for {symbol} at price: {price}, amount = {mfi_5m_scalping_sell_amount * pullback_portion}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -691,16 +751,16 @@ def mfi_5m_scalping_buy_coin(exchange,symbol: str)->None:
 
 def mfi_4h_scalping_sell_coin(exchange, symbol: str):
     try:
+        sell_amount= mfi_4h_scalping_sell_amount
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((mfi_4h_scalping_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 3)
         resp      =exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        show_orderbook(orderbook)
-        logging.info(f"MFI(4h) scalping sell order placed for {symbol} at price: {price}, amount = {mfi_4h_scalping_sell_amount}")
+        logging.info(f"MFI(4h) scalping sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount)
 
-        price = pullback_order(exchange, symbol, amount=mfi_4h_scalping_sell_amount, price=price)
-        logging.info(f"MFI(4h) pullback order for {symbol} at price: {price}, amount = {mfi_4h_scalping_sell_amount * pullback_portion}")
+        show_orderbook(orderbook)
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -729,16 +789,16 @@ def mfi_4h_scalping_buy_coin(exchange,symbol: str)->None:
 
 def stochrsi_10m_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = stochrsi_10m_sell_amount
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((stochrsi_10m_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 3)
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        show_orderbook(orderbook)
-        logging.info(f"Stochrsi(10m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_10m_sell_amount}")
+        logging.info(f"Stochrsi(10m) Sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount)
 
-        price = pullback_order(exchange, symbol, amount=stochrsi_10m_sell_amount, price=price)
-        logging.info(f"Stochrsi(10m) pullback order for {symbol} at price: {price}, amount = {stochrsi_10m_sell_amount * pullback_portion}")
+        show_orderbook(orderbook)
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -769,16 +829,16 @@ def stochrsi_10m_buy_coin(exchange,symbol: str)->None:
 
 def stochrsi_30m_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = stochrsi_30m_sell_amount 
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((stochrsi_30m_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 3)
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
-        show_orderbook(orderbook)
-        logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_30m_sell_amount}")
+        logging.info(f"Stochrsi(30m) Sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount)
 
-        price = pullback_order(exchange, symbol, amount=stochrsi_30m_sell_amount, price=price)
-        logging.info(f"Stochrsi(30m) pullback order for {symbol} at price: {price}, amount = {stochrsi_30m_sell_amount * pullback_portion}")
+        show_orderbook(orderbook)
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -808,16 +868,15 @@ def stochrsi_30m_buy_coin(exchange,symbol: str)->None:
 
 def stochrsi_4h_sell_coin(exchange, symbol: str):
     try:
+        sell_amount = stochrsi_4h_sell_amount
         orderbook = exchange.fetch_order_book(symbol)
         price     = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
-        amount    = round((stochrsi_4h_sell_amount)/price, 3)
+        amount    = round((sell_amount)/price, 3)
         resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {sell_amount}")
+        backlog_pullback(symbol, price, sell_amount)
         show_orderbook(orderbook)
-        logging.info(f"Stochrsi(4h) Sell order placed for {symbol} at price: {price}, amount = {stochrsi_4h_sell_amount}")
-
-        price = pullback_order(exchange, symbol, amount=stochrsi_4h_sell_amount, price=price)
-        logging.info(f"Stochrsi(4h) pullback order for {symbol} at price: {price}, amount = {stochrsi_4h_sell_amount * pullback_portion}")
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -1173,6 +1232,9 @@ if __name__=='__main__':
     #define doge symbol 
     doge = "DOGE/KRW"
 
+    #load existing pullback_map data from file
+    load_pullback_data(pullback_data_file)
+
     #defile list of symbols 
     symbols= [doge]
     init_supertrend_quota(symbols)
@@ -1187,6 +1249,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_rsi_signals_10m, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_1h, exchange, doge)
+    schedule.every(30).seconds.do(execute_pullback_buy, exchange, doge)
 
     #bollinger band order every 5 minutes with bollinger(5m) analysis
     schedule.every(5).minutes.do(execute_bollinger_order, exchange, doge)

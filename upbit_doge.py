@@ -629,7 +629,7 @@ def execute_pullback_buy(exchange, symbol):
            return
 
         if current_price < order_price:
-           resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = order_price)
+           resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = current_price)
            logging.info(f"Pullback buy order for {symbol} at price: {price}, amount = {amount}")
 
            hq.heappop(pullback_map[symbol])

@@ -602,14 +602,14 @@ def load_pullback_data(filename):
         init_pullback_map(filename)
 
 def backlog_pullback(symbol, price, amount):
-    pullback_pct = round(random.uniform(0.015, 0.05), 2)
+    pullback_pct = round(random.uniform(0.015, 0.06), 2)
     pullback_price  = round(price * (1- pullback_pct ), 1)
-    logging.info(f"Backlog pullback for {symbol}, price= {pullback_price}, percentage= {pct}, amount={amount}")
 
     global pullback_map
     hq.heappush(pullback_map[symbol], PullBack(price, amount))
+    logging.info(f"Backlog pullback add data {symbol}, price= {pullback_price}, percentage= {pullback_pct}, amount={amount}")
+    logging.info(f"Backlog pullback current data {pullback_map[symbol]}")
 
-    #After updating save_data to file
     save_data(pullback_data_file, pullback_map)
 
 def execute_pullback_buy(exchange, symbol):
@@ -620,7 +620,6 @@ def execute_pullback_buy(exchange, symbol):
            print(f"pullback_map[{symbol}] -  heapq lengh is zero")
            return
 
-        logging.info(f"pullback data {pullback_map[symbol]}")
         orderbook = exchange.fetch_order_book(symbol)
         current_price = round((orderbook['bids'][0][0] + orderbook['asks'][0][0])/2, 1)
 
@@ -633,18 +632,16 @@ def execute_pullback_buy(exchange, symbol):
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         if free_KRW <(pullback_amount ):
-           logging.info(f"Cancel pullback buy for low balance {symbol} free KRW = {free_KRW}")
            return
 
         if current_price < order_price:
            resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = current_price)
-           logging.info(f"Pullback buy order for {symbol} at price: {price}, amount = {amount}")
+           logging.info(f"Execute Pullback buy order for {symbol} at price: {price}, amount = {amount}")
 
            hq.heappop(pullback_map[symbol])
 
            #After updating save_data to file
            save_data(pullback_data_file, pullback_map)
-           logging.info(f"Pullback file saved to {pullback_data_file}")
 
         else:
            print(f"Current price {current_price} is higher than highest order price {order_price}")

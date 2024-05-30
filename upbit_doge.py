@@ -16,6 +16,13 @@ from collections import defaultdict
 
 from conf import key
 from conf import binance_key
+from conf import fredapi_key 
+
+# Crypto currency price trends are deeply affected by 
+# U.S. Government Treasury rate, therefore it's important to reflect
+# this figures into the trading based on each level of the rate
+
+treasury_rate = defaultdict(float)
 
 # Bollinger band buy/sell order 
 bollinger_buy = defaultdict(bool)
@@ -174,6 +181,7 @@ def calculate_signal(mfi, period=9):
     signal = mfi.rolling(window=period).mean()
     return signal
 
+# Todo 
 def analyze_historical_data(exchange, symbol:str):
     try:
         from_ts = exchange.parse8601('2021-01-01 00:00:00')
@@ -304,7 +312,7 @@ def analyze_stochrsi_10m(exchange, symbol: str)->None:
 
         df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
         df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
- 
+
         # Get the latest value
         current_stochrsi_k = df['stochrsi_k'].iloc[-1]
         current_stochrsi_d = df['stochrsi_d'].iloc[-1]
@@ -594,7 +602,7 @@ def load_pullback_data(filename):
         init_pullback_map(filename)
 
 def backlog_pullback(symbol, price, amount):
-    pct = round(random.uniform(0.015, 0.05), 2)
+    pullback_pct = round(random.uniform(0.015, 0.05), 2)
     pullback_price  = round(price * (1- pullback_pct ), 1)
     logging.info(f"Backlog pullback for {symbol}, price= {pullback_price}, percentage= {pct}, amount={amount}")
 

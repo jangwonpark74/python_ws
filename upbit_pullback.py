@@ -286,7 +286,7 @@ def market_sell_coin(exchange, symbol, amount, price):
 
 def pullback_order(exchange, symbol, price, amount):
     try:
-        pb_price = round(random.uniform(0.015, 0.05)*price, 1)
+        pb_price = price * round( 1 - random.uniform(0.015, 0.05), 3)
         pb_amount = amount * pullback_portion
 
         free_KRW = exchange.fetchBalance()['KRW']['free']

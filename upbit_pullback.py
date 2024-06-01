@@ -75,7 +75,7 @@ def current_time():
     localtime_now = datetime_now.astimezone(KST) 
     return localtime_now
 
-def save_trading_data(symbol, indicator, order_type, price, amount):
+def save_data(symbol, indicator, order_type, price, amount):
     datetime_now = current_time()
     csv_row = {
              'datetime': datetime_now,
@@ -281,7 +281,7 @@ def market_buy_coin(exchange, symbol, amount):
 
 def market_sell_coin(exchange, symbol, amount, price):
     exchange.options['createMarketBuyOrderRequiresPrice']=False
-    sell_amount = round(amount/price, 5)
+    sell_amount = round(amount/price, 3)
     order= exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def pullback_order(exchange, symbol, price, amount):
@@ -291,16 +291,16 @@ def pullback_order(exchange, symbol, price, amount):
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
         if free_KRW <(bp+amount ):
-            log_cancel(symbol, "Pullback buy order", pb_price) 
+            log_cancel(symbol, "Pullback buy order", pb_price)
             return
 
         order_amount = round(pb_amount/pb_price, 5)
         resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = pb_price)
-        save_trading_data(symbol,"pullback", "buy", pb_price, order_amount) 
+        save_data(symbol,"pullback", "buy", pb_price, order_amount) 
         log_order(symbol, "Pullback buy", pb_price, pb_amount )
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception : ", str(e))
 
 def mfi_sell_coin(exchange, symbol: str):
     try:
@@ -310,14 +310,14 @@ def mfi_sell_coin(exchange, symbol: str):
         amount    = calc_mfi_amount(symbol)
 
         order = market_sell_coin(exchange, symbol, amount, price)
-        save_trading_data(symbol,'mfi', 'sell', price, amount) 
+        save_data(symbol,'mfi', 'sell', price, amount) 
         pullback_order(exchange, symbol, price, amount)
         log_order(symbol, "MFI(14), 5m, sell", price, amount)
 
         show_orderbook(orderbook)
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception : ", str(e))
 
 def cci_buy_coin(exchange,symbol: str)->None:
     try:
@@ -332,13 +332,13 @@ def cci_buy_coin(exchange,symbol: str)->None:
             return
 
         market_buy_coin(exchange, symbol, amount, price)
-        save_trading_data(symbol,"cci", "buy", price, amount) 
+        save_data(symbol,"cci", "buy", price, amount) 
         log_order(symbol, "CCI, 5m, Buy", price, amount)
 
         show_orderbook(orderbook)
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception : ", str(e))
 
 def stochrsi_buy_coin(exchange,symbol: str)->None:
     try:
@@ -353,13 +353,13 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
             return
 
         market_buy_coin(exchange, symbol, amount)
-        save_trading_data(symbol,"STOCHRSI", "buy", price, amount) 
+        save_data(symbol,"STOCHRSI", "buy", price, amount) 
 
         logging.info(f"STOCHRSI(10m) buy order placed for {symbol} at price: {price}, amount = {amount}")
         show_orderbook(orderbook)
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception : ", str(e))
 
 def supertrend_sell_coin(exchange, symbol: str):
     try:
@@ -368,14 +368,14 @@ def supertrend_sell_coin(exchange, symbol: str):
         amount    = supertrend_sell_amount
 
         order = market_sell_coin(exchange, symbol, price, amount)
-        save_trading_data(symbol,"supertrend", "sell", price, amount) 
+        save_data(symbol,"supertrend", "sell", price, amount) 
         log_order(symbol, "Supertrend sell", price, amount)
 
         pullback_order(exchange, symbol, price, amount)
         show_orderbook(orderbook)
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception : ", str(e))
 
 def execute_mfi_sell(exchange, symbol: str)->None:
     sell = mfi_sell_decision[symbol]

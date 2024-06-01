@@ -273,10 +273,16 @@ def log_order(symbol, order_type,  price, amount):
 def log_cancel(symbol, order_type, price):
     logging.info(f"[ {symbol} ] {order_type} cancel for low balance at price= {price}")
 
-def market_buy_coin(exchange, symbol, amount, price):
-    amount = round(amount/price, 5)
+def market_buy_coin(exchange, symbol, amount):
+    amount_krw = amount 
     exchange.options['createMarketBuyOrderRequiresPrice']=False
-    resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
+    order = exchange.create_market_buy_order(symbol = symbol, amount = amount_krw)
+    return order
+
+def market_sell_coin(exchange, symbol, amount, price):
+    exchange.options['createMarketBuyOrderRequiresPrice']=False
+    sell_amount = round(amount/price, 5)
+    order= exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def pullback_order(exchange, symbol, price, amount):
     try:
@@ -303,8 +309,8 @@ def mfi_sell_coin(exchange, symbol: str):
         orderbook = exchange.fetch_order_book(symbol)
         price     = orderbook['asks'][0][0]
         amount    = calc_mfi_amount(symbol)
-        resp      = exchange.create_market_sell_order(symbol=symbol, amount = amount )
 
+        order = market_sell_coin(exchange, symbol, amount, price)
         save_trading_data(symbol,'mfi', 'sell', price, amount) 
         pullback_order(exchange, symbol, price, amount)
         log_order(symbol, "MFI(14), 5m, sell", price, amount)
@@ -347,7 +353,7 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
             log_cancel_order(symbol, "STOCHRSI buy", price)
             return
 
-        market_buy_coin(exchange, symbol, amount, price)
+        market_buy_coin(exchange, symbol, amount)
         save_trading_data(symbol,"STOCHRSI", "buy", price, amount) 
 
         logging.info(f"STOCHRSI(10m) buy order placed for {symbol} at price: {price}, amount = {amount}")
@@ -362,8 +368,7 @@ def supertrend_sell_coin(exchange, symbol: str):
         price     = orderbook['bids'][0][0]
         amount    = supertrend_sell_amount
 
-        resp      = exchange.create_market_sell_order(symbol=symbol, amount=amount)
-
+        order = market_sell_coin(exchange, symbol, price, amount)
         save_trading_data(symbol,"supertrend", "sell", price, amount) 
         log_order(symbol, "Supertrend sell", price, amount)
 

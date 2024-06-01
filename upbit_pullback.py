@@ -16,10 +16,10 @@ from pytz import timezone
 from datetime import datetime
 
 # Decision for orders 
-mfi_sell_decision= defaultdict(bool)
+mfi_sell_decision = defaultdict(bool)
 cci_buy_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
-supertrend_sell_decision= defaultdict(bool)
+supertrend_sell_decision = defaultdict(bool)
 
 # Current CCI 
 current_cci = defaultdict(float)
@@ -293,7 +293,6 @@ def pullback_order(exchange, symbol, price, amount):
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
         if free_KRW <(bp+amount ):
-            log_cancel(symbol, "Pullback buy order", pb_price)
             return
 
         order_amount = round(pb_amount/pb_price, 5)
@@ -330,7 +329,6 @@ def cci_buy_coin(exchange,symbol: str)->None:
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         if free_KRW < amount:
-            log_cancel_order(symbol, "CCI 5m buy", price)
             return
 
         order = market_buy_coin(exchange, symbol, amount, price)
@@ -351,7 +349,6 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
         free_KRW = exchange.fetchBalance()['KRW']['free']
 
         if free_KRW < amount:
-            log_cancel_order(symbol, "STOCHRSI buy", price)
             return
 
         order = market_buy_coin(exchange, symbol, amount)

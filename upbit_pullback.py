@@ -123,7 +123,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
         pprint(df.iloc[-1])
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception in analyze_stochrsi_signal: ", str(e))
 
 def analyze_mfi_signal(exchange, symbol: str)->None:
     try:
@@ -173,7 +173,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         mfi_sell_decision[symbol] = (mfi*cci_factor) > mfi_high_threshold 
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception in analyze_mfi_signal ", str(e))
 
 def analyze_cci_signal(exchange, symbol: str)->None:
     try:
@@ -218,7 +218,8 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         pprint(df_4h.iloc[-1])
 
     except Exception as e:
-        print("Exception : ", str(e))
+        loggin.info("Exception in analyze_cci_signal : ", str(e))
+
 
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
@@ -265,7 +266,7 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         supertrend_sell_decision[symbol] = sell
 
     except Exception as e:
-        print("Exception : ", str(e))
+        logging.info("Exception in analyze_supertrend_signal: ", str(e))
 
 def log_order(symbol, order_type,  price, amount):
     logging.info(f"[ {symbol} ] {order_type} order placed at price = {price}, amount = {amount}")
@@ -283,6 +284,7 @@ def market_sell_coin(exchange, symbol, amount, price):
     exchange.options['createMarketBuyOrderRequiresPrice']=False
     sell_amount = round(amount/price, 3)
     order= exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
+    return order
 
 def pullback_order(exchange, symbol, price, amount):
     try:
@@ -331,7 +333,7 @@ def cci_buy_coin(exchange,symbol: str)->None:
             log_cancel_order(symbol, "CCI 5m buy", price)
             return
 
-        market_buy_coin(exchange, symbol, amount, price)
+        order = market_buy_coin(exchange, symbol, amount, price)
         save_data(symbol,"cci", "buy", price, amount) 
         log_order(symbol, "CCI, 5m, Buy", price, amount)
 
@@ -352,7 +354,7 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
             log_cancel_order(symbol, "STOCHRSI buy", price)
             return
 
-        market_buy_coin(exchange, symbol, amount)
+        order = market_buy_coin(exchange, symbol, amount)
         save_data(symbol,"STOCHRSI", "buy", price, amount) 
 
         logging.info(f"STOCHRSI(10m) buy order placed for {symbol} at price: {price}, amount = {amount}")

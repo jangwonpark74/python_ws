@@ -85,7 +85,7 @@ def save_trading_data(symbol, indicator, order_type, price, amount):
              'price' : round(price, 1),
              'amount': round(amount, 0),
     }
-    write_to_cvs( csv_row )
+    write_to_csv( csv_row )
 
 def show_orderbook(orderbook):
     print("\n------------Getting order book -----------")
@@ -286,7 +286,7 @@ def market_sell_coin(exchange, symbol, amount, price):
 
 def pullback_order(exchange, symbol, price, amount):
     try:
-        pb_price = price * round( 1 - random.uniform(0.015, 0.05), 3)
+        pb_price = price * round( 1 - random.uniform(0.015, 0.06), 3)
         pb_amount = amount * pullback_portion
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
@@ -294,8 +294,7 @@ def pullback_order(exchange, symbol, price, amount):
             log_cancel(symbol, "Pullback buy order", pb_price) 
             return
 
-        order_amount = round(pb_amount/pb_price, 3)
-
+        order_amount = round(pb_amount/pb_price, 5)
         resp = exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = pb_price)
         save_trading_data(symbol,"pullback", "buy", pb_price, order_amount) 
         log_order(symbol, "Pullback buy", pb_price, pb_amount )

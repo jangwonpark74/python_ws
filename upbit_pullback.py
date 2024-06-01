@@ -273,7 +273,8 @@ def log_order(symbol, order_type,  price, amount):
 def log_cancel(symbol, order_type, price):
     logging.info(f"[ {symbol} ] {order_type} cancel for low balance at price= {price}")
 
-def market_buy_coin(exchange, symbol, amount):
+def market_buy_coin(exchange, symbol, amount, price):
+    amount = round(amount/price, 5)
     exchange.options['createMarketBuyOrderRequiresPrice']=False
     resp = exchange.create_market_buy_order(symbol = symbol, amount = amount)
 
@@ -325,7 +326,7 @@ def cci_buy_coin(exchange,symbol: str)->None:
             log_cancel_order(symbol, "CCI 5m buy", price)
             return
 
-        market_buy_coin(exchange, symbol, amount)
+        market_buy_coin(exchange, symbol, amount, price)
         save_trading_data(symbol,"cci", "buy", price, amount) 
         log_order(symbol, "CCI, 5m, Buy", price, amount)
 
@@ -346,7 +347,7 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
             log_cancel_order(symbol, "STOCHRSI buy", price)
             return
 
-        market_buy_coin(exchange, symbol, amount)
+        market_buy_coin(exchange, symbol, amount, price)
         save_trading_data(symbol,"STOCHRSI", "buy", price, amount) 
 
         logging.info(f"STOCHRSI(10m) buy order placed for {symbol} at price: {price}, amount = {amount}")

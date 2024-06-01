@@ -29,16 +29,16 @@ mfi_weight = defaultdict(float)
 
 # Order amount
 # MFI amount will be multiplied by MFI weight
-mfi_sell_amount = 2000000
-mfi_buy_amount  = 2000000
-cci_buy_amount  = 3000000
+mfi_sell_amount = 4000000
+mfi_buy_amount  = 4000000
+cci_buy_amount  = 4500000
 stochrsi_buy_amount  = 3000000
 
 # 4 Hour supertrend order amount 
 supertrend_sell_amount = 10000000
 
 # Threshold for each trading strategy
-cci_low_threshold = -150
+cci_low_threshold = -120
 mfi_high_threshold = 80
 stochrsi_low_threshold = 25
 

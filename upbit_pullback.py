@@ -35,14 +35,14 @@ mfi_weight = defaultdict(float)
 
 # Order amount
 # MFI amount will be multiplied by MFI weight
-mfi_sell_amount = 4000000
-mfi_buy_amount  = 4000000
+mfi_sell_amount = 5000000
+mfi_buy_amount  = 5000000
 cci_sell_amount = 4000000
-cci_buy_amount  = 4500000
-stochrsi_buy_amount  = 3000000
+cci_buy_amount  = 4000000
+stochrsi_buy_amount  = 5000000
 
-# 4 Hour supertrend order amount 
-supertrend_sell_amount = 10000000
+# 2 Hour supertrend order amount 
+supertrend_sell_amount = 2000000
 
 # Threshold for each trading strategy
 cci_low_threshold = -125
@@ -56,8 +56,8 @@ pullback_portion = 0.6
 # CCI based decision enum
 class Cci(Enum):
     SELL = 1
-    HOLD = 0 
-    BUY  = -1 
+    HOLD = 0
+    BUY  = -1
 
 pd.set_option('display.max_rows', None)
 
@@ -462,11 +462,11 @@ def execute_supertrend_sell(exchange, symbol: str):
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol", "MFI Sell",  "CCI Buy", "STOCHRSI buy", "Supertrend Sell" ]
+    column_name= ["Symbol", "MFI Sell", "CCI Sell", "CCI Buy", "STOCHRSI buy", "Supertrend Sell" ]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:
-        orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_buy_decision[s], stochrsi_buy_decision[s], \
+        orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_sell_decision[s], cci_buy_decision[s], stochrsi_buy_decision[s], \
                                    supertrend_sell_decision[s]]
     pprint(orders)
 
@@ -513,7 +513,7 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(10).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(1).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

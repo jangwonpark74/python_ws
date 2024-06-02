@@ -21,6 +21,9 @@ cci_buy_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
 supertrend_sell_decision = defaultdict(bool)
 
+# Supertrend is_uptrend
+is_supertrend_up = defaultdict(bool)
+
 # Current CCI 
 current_cci = defaultdict(float)
 
@@ -262,6 +265,9 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         curr = df.iloc[-1]['in_uptrend'] 
         sell = (not curr) and prev 
 
+        global is_supertrend_up
+        is_supertrend_up[symbol] = curr
+
         global supertrend_sell_decision
         supertrend_sell_decision[symbol] = sell
 
@@ -284,9 +290,16 @@ def market_sell_coin(exchange, symbol, amount, price):
     sell_amount = round(amount/price, 3)
     exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
+def calc_pullback_price(symbol, price) -> float:
+    if is_supertrend_up[symbol]:
+        pullback_price = price * round(1 - abs(random.gauss(0.025, 0.01)), 3)
+    else:
+        pullback_price = price *round(1 - abs(random.gauss(0.04, 0.02)), 3)
+    return pullback_price
+
 def pullback_order(exchange, symbol, price, amount):
     try:
-        pb_price = price * round( 1 - random.uniform(0.015, 0.06), 3)
+        pb_price = calc_pullback_price(symbol, price)
         pb_amount = amount * pullback_portion
 
         free_KRW = exchange.fetchBalance()['KRW']['free']

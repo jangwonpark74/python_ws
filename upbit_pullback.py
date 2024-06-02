@@ -292,10 +292,12 @@ def market_sell_coin(exchange, symbol, amount, price):
 
 def calc_pullback_price(symbol, price) -> float:
     if is_supertrend_up[symbol]:
-        pullback_price = price * round(1 - abs(random.gauss(0.025, 0.01)), 3)
+        pb_ratio = abs(random.gauss(0.025, 0.01))
+        pb_price = round(price * (1 - pb_ratio), 1)
     else:
-        pullback_price = price *round(1 - abs(random.gauss(0.04, 0.02)), 3)
-    return pullback_price
+        pb_ratio = abs(random.gauss(0.04, 0.02))
+        pb_price = round(price * (1 - pb_ratio), 1)
+    return pb_price
 
 def pullback_order(exchange, symbol, price, amount):
     try:

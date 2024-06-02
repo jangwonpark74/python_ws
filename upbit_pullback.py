@@ -9,6 +9,8 @@ import talib
 import time
 import random
 
+from enum import Enum
+
 from conf import key
 from collections import defaultdict
 from pprint import pprint
@@ -18,6 +20,7 @@ from datetime import datetime
 # Decision for orders 
 mfi_sell_decision = defaultdict(bool)
 cci_buy_decision = defaultdict(bool)
+cci_sell_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
 supertrend_sell_decision = defaultdict(bool)
 
@@ -34,6 +37,7 @@ mfi_weight = defaultdict(float)
 # MFI amount will be multiplied by MFI weight
 mfi_sell_amount = 4000000
 mfi_buy_amount  = 4000000
+cci_sell_amount = 4000000
 cci_buy_amount  = 4500000
 stochrsi_buy_amount  = 3000000
 
@@ -41,12 +45,19 @@ stochrsi_buy_amount  = 3000000
 supertrend_sell_amount = 10000000
 
 # Threshold for each trading strategy
-cci_low_threshold = -120
+cci_low_threshold = -125
+cci_high_threshold = 125
 mfi_high_threshold = 80
 stochrsi_low_threshold = 25
 
 # Pullback stratey 
 pullback_portion = 0.6
+
+# CCI based decision enum
+class Cci(Enum):
+    SELL = 1
+    HOLD = 0 
+    BUY  = -1 
 
 pd.set_option('display.max_rows', None)
 
@@ -169,7 +180,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         # current cci 
         cci = current_cci[symbol]
-        cci_factor = cci / 140.0
+        cci_factor = cci / 130.0
 
         # update data for execution of order
         global mfi_sell_decision
@@ -184,16 +195,24 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv_5m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['cci_5m']   = round(talib.CCI(df['high'], df['low'], df['close'], timeperiod=20), 1)
+        df['cci_5m']   = round(talib.CCI(df['high'], df['low'], df['close'], timeperiod=14), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
         # store information for dispaly
+
+        ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
+        df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
+        df_30m['cci_30m']   = round(talib.CCI(df_30m['high'], df_30m['low'], df_30m['close'], timeperiod=14), 1)
+
+        cci_30m = df_30m['cci_30m'].iloc[-1]
 
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
         df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1h['cci_1h']   = round(talib.CCI(df_1h['high'], df_1h['low'], df_1h['close'], timeperiod=20), 1)
+        df_1h['cci_1h']   = round(talib.CCI(df_1h['high'], df_1h['low'], df_1h['close'], timeperiod=14), 1)
 
         cci_1h = df_1h['cci_1h'].iloc[-1]
 
@@ -201,20 +220,23 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_4h['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['cci_4h']   = round(talib.CCI(df_4h['high'], df_4h['low'], df_4h['close'], timeperiod=20), 1)
+        df_4h['cci_4h']   = round(talib.CCI(df_4h['high'], df_4h['low'], df_4h['close'], timeperiod=14), 1)
 
         # Scalping based on MFI and RSI every 4 hours
         cci_4h = df_4h['cci_4h'].iloc[-1]
-        cci = (cci_5m + cci_1h + cci_4h)/3.0
 
-        global current_cci
-        current_cci[symbol] = cci
+        cci = (cci_5m + cci_30m + cci_1h + cci_4h)/4.0
+
+        global cci_sell_decision
+        cci_sell_decision[symbol] = (cci > cci_high_threshold)
 
         global cci_buy_decision
         cci_buy_decision[symbol] = (cci < cci_low_threshold) 
 
         print(f'\n----------- {symbol} CCI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
+        print(f'\n----------- {symbol} CCI Signal Analysis (30 minutes) --------------')
+        pprint(df_30m.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis ( 1 hour) --------------')
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis (4 hours) --------------')
@@ -333,6 +355,24 @@ def mfi_sell_coin(exchange, symbol: str):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+def cci_sell_coin(exchange, symbol: str):
+    try:
+
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['asks'][0][0]
+        amount    = cci_sell_amount 
+
+        market_sell_coin(exchange, symbol, amount, price)
+        save_data(symbol,'mfi', 'sell', price, amount) 
+        pullback_order(exchange, symbol, price, amount)
+        log_order(symbol, "CCI average based sell", price, amount)
+
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
+
 def cci_buy_coin(exchange,symbol: str)->None:
     try:
         orderbook = exchange.fetch_order_book(symbol)
@@ -394,6 +434,12 @@ def execute_mfi_sell(exchange, symbol: str)->None:
 
     if sell:
        mfi_sell_coin(exchange, symbol)
+
+def execute_cci_sell(exchange, symbol: str)->None:
+    sell = cci_sell_decision[symbol]
+
+    if sell:
+        cci_sell_coin(exchange, symbol)
 
 def execute_cci_buy(exchange, symbol: str)->None:
     buy = cci_buy_decision[symbol]
@@ -464,7 +510,8 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
-    schedule.every(5).minutes.do(execute_cci_buy,exchange, doge)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(10).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(1).hours.do(execute_supertrend_sell, exchange, doge)
 

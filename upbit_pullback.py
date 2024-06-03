@@ -37,12 +37,12 @@ mfi_weight = defaultdict(float)
 # MFI amount will be multiplied by MFI weight
 mfi_sell_amount = 5000000
 mfi_buy_amount  = 5000000
-cci_sell_amount = 4000000
-cci_buy_amount  = 4000000
+cci_sell_amount = 5000000
+cci_buy_amount  = 5000000
 stochrsi_buy_amount  = 5000000
 
 # 2 Hour supertrend order amount 
-supertrend_sell_amount = 2000000
+supertrend_sell_amount = 5000000
 
 # Threshold for each trading strategy
 cci_low_threshold = -125
@@ -70,7 +70,7 @@ def write_to_csv(row_dict):
     :param row_dict: A dictionary representing the row to be added, with keys as column names.
     """
 
-    file_path = 'trading.cvs'
+    file_path = 'trading.csv'
     column_names = ['datetime', 'symbol', 'indicator', 'order_type', 'price', 'amount']
     file_exists = os.path.isfile(file_path)
     with open(file_path, mode='a', newline='') as file:

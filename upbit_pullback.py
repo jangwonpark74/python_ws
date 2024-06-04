@@ -150,6 +150,14 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         mfi_5m = df['mfi_5m'].iloc[-1]
         # store information for dispaly
 
+        ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
+        df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
+        df_30m['mfi_30m'] = round(talib.MFI(df_30m['high'], df_30m['low'], df_30m['close'], df_30m['volume'], timeperiod=14), 1)
+
+        mfi_30m = df_30m['mfi_30m'].iloc[-1]
+
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
@@ -167,12 +175,14 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         # Scalping based on MFI and RSI every 4 hours
         mfi_4h = df_4h['mfi_4h'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_1h + mfi_4h)/3.0
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h)/4.0
         global mfi_weight
         mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
 
         print(f'\n----------- {symbol} MFI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
+        print(f'\n----------- {symbol} MFI Signal Analysis (30 minutes) --------------')
+        pprint(df_30m.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis ( 1 hour) --------------')
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis (4 hours) --------------')
@@ -180,7 +190,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         # current cci 
         cci = current_cci[symbol]
-        cci_factor = cci / 130.0
+        cci_factor = cci / 140.0
 
         # update data for execution of order
         global mfi_sell_decision
@@ -231,7 +241,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         cci_sell_decision[symbol] = (cci > cci_high_threshold)
 
         global cci_buy_decision
-        cci_buy_decision[symbol] = (cci < cci_low_threshold) 
+        cci_buy_decision[symbol] = (cci < cci_low_threshold)
 
         print(f'\n----------- {symbol} CCI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
@@ -249,7 +259,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
         # upto two weeks analyze supertrend 
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -284,8 +294,8 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         pprint(df.iloc[-1])
 
         prev = df.iloc[-2]['in_uptrend']
-        curr = df.iloc[-1]['in_uptrend'] 
-        sell = (not curr) and prev 
+        curr = df.iloc[-1]['in_uptrend']
+        sell = (not curr) and prev
 
         global is_supertrend_up
         is_supertrend_up[symbol] = curr

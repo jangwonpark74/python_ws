@@ -43,8 +43,8 @@ cci_buy_amount  = 4000000
 stochrsi_buy_amount  = 3000000
 
 # 15m supertrend order amount 
-supertrend_sell_amount = 7000000
-supertrend_buy_amount = 7000000
+supertrend_sell_amount = 6000000
+supertrend_buy_amount = 6000000
 
 
 # Threshold for each trading strategy
@@ -507,12 +507,12 @@ def execute_supertrend_buy(exchange, symbol: str):
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol", "MFI Sell", "CCI Sell", "CCI Buy", "STOCHRSI buy", "Supertrend Sell", "Supertrend Buy" ]
+    column_name= ["Symbol", "MFI Sell", "CCI Sell", "CCI Buy", "STOCHRSI buy", "SuperT-Sell", "SuperT-Buy", "Supertrend Up" ]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:
         orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_sell_decision[s], cci_buy_decision[s], stochrsi_buy_decision[s], \
-                                   supertrend_sell_decision[s], supertrend_buy_decision[s]]
+                                   supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[symbol]]
     pprint(orders)
 
 def monitor_balance(exchange):

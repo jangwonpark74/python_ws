@@ -23,6 +23,7 @@ cci_buy_decision = defaultdict(bool)
 cci_sell_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
 supertrend_sell_decision = defaultdict(bool)
+supertrend_buy_decision = defaultdict(bool)
 
 # Supertrend is_uptrend
 is_supertrend_up = defaultdict(bool)
@@ -41,8 +42,10 @@ cci_sell_amount = 6000000
 cci_buy_amount  = 4000000
 stochrsi_buy_amount  = 3000000
 
-# 2 Hour supertrend order amount 
-supertrend_sell_amount = 5000000
+# 15m supertrend order amount 
+supertrend_sell_amount = 7000000
+supertrend_buy_amount = 7000000
+
 
 # Threshold for each trading strategy
 cci_low_threshold = -125
@@ -296,12 +299,17 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         prev = df.iloc[-2]['in_uptrend']
         curr = df.iloc[-1]['in_uptrend']
         sell = (not curr) and prev
+        buy  = curr and (not prev)
+
 
         global is_supertrend_up
         is_supertrend_up[symbol] = curr
 
         global supertrend_sell_decision
         supertrend_sell_decision[symbol] = sell
+
+        global supertrend_buy_decision
+        supertrend_buy_decision[symbol] = buy
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -439,6 +447,27 @@ def supertrend_sell_coin(exchange, symbol: str):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+
+def supertrend_buy_coin(exchange,symbol: str)->None:
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['bids'][0][0]
+        amount    = supertrend_buy_amount
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        if free_KRW < amount:
+            return
+
+        market_buy_coin(exchange, symbol, amount)
+        save_data(symbol,"Supertrend", "buy", price, amount) 
+
+        logging.info(f"Supertrend buy order placed for {symbol} at price: {price}, amount = {amount}")
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
 def execute_mfi_sell(exchange, symbol: str)->None:
     sell = mfi_sell_decision[symbol]
 
@@ -468,6 +497,12 @@ def execute_supertrend_sell(exchange, symbol: str):
 
     if sell:
         supertrend_sell_coin(exchange, symbol)
+
+def execute_supertrend_buy(exchange, symbol: str):
+    sell = supertrend_buy_decision[symbol]
+
+    if sell:
+        supertrend_buy_coin(exchange, symbol)
 
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -523,7 +558,8 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

@@ -512,7 +512,7 @@ def monitor_signals(symbols : list[str]):
 
     for s in symbols:
         orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_sell_decision[s], cci_buy_decision[s], stochrsi_buy_decision[s], \
-                                   supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[symbol]]
+                                   supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[s]]
     pprint(orders)
 
 def monitor_balance(exchange):

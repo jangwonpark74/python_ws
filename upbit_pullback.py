@@ -111,7 +111,7 @@ def calc_mfi_amount(symbol):
 
 def analyze_stochrsi_signal(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='10m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -133,7 +133,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
 
         df['stochrsi_buy']  = buy
 
-        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (10 minutes) --------------')
+        print(f'\n----------- {symbol} STOCHRSI Signal Analysis (30 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -512,7 +512,7 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
-    schedule.every(10).minutes.do(execute_stochrsi_buy, exchange, doge)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(2).hours.do(execute_supertrend_sell, exchange, doge)
 
     # monitoring every 30 seconds

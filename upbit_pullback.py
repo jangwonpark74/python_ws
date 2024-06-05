@@ -48,9 +48,9 @@ supertrend_buy_amount = 6000000
 
 
 # Threshold for each trading strategy
-cci_low_threshold = -125
-cci_high_threshold = 125
-mfi_high_threshold = 80
+cci_low_threshold = -120
+cci_high_threshold = 120
+mfi_high_threshold = 80 
 stochrsi_low_threshold = 25
 
 # Pullback stratey 
@@ -171,14 +171,22 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_4h['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
         df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
         df_4h['mfi_4h'] = round(talib.MFI(df_4h['high'], df_4h['low'], df_4h['close'], df_4h['volume'], timeperiod=14), 1)
 
-        # Scalping based on MFI and RSI every 4 hours
         mfi_4h = df_4h['mfi_4h'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h)/4.0
+        ohlcv_1d = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df_1d = pd.DataFrame(ohlcv_1d, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
+        df_1d['mfi_1d'] = round(talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
+
+        mfi_1d = df_1d['mfi_1d'].iloc[-1]
+
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d)/5.0
+
         global mfi_weight
         mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
 

@@ -9,8 +9,6 @@ import talib
 import time
 import random
 
-from enum import Enum
-
 from conf import key
 from collections import defaultdict
 from pprint import pprint
@@ -36,9 +34,9 @@ mfi_weight = defaultdict(float)
 
 # Order amount
 # MFI amount will be multiplied by MFI weight
-mfi_sell_amount = 6000000
+mfi_sell_amount = 5000000
 mfi_buy_amount  = 3000000
-cci_sell_amount = 6000000
+cci_sell_amount = 5000000
 cci_buy_amount  = 4000000
 stochrsi_buy_amount  = 3000000
 
@@ -48,19 +46,13 @@ supertrend_buy_amount = 6000000
 
 
 # Threshold for each trading strategy
-cci_low_threshold = -120
-cci_high_threshold = 120
-mfi_high_threshold = 80 
+cci_low_threshold = -110
+cci_high_threshold = 110
+mfi_high_threshold = 80
 stochrsi_low_threshold = 25
 
 # Pullback stratey 
-pullback_portion = 0.6
-
-# CCI based decision enum
-class Cci(Enum):
-    SELL = 1
-    HOLD = 0
-    BUY  = -1
+pullback_portion = 0.5
 
 pd.set_option('display.max_rows', None)
 
@@ -553,9 +545,11 @@ if __name__=='__main__':
 
     #define doge symbol 
     doge = "DOGE/KRW"
+    btc = "BTC/KRW"
+    xrp = "XRP/KRW"
 
     #defile list of symbols 
-    symbols= [doge]
+    symbols= [doge, btc, xrp]
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
@@ -568,6 +562,30 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
+
+    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_cci_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, btc)
+
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
+    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, btc)
+ 
+    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
+
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
+    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, xrp)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

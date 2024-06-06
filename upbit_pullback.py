@@ -37,8 +37,8 @@ mfi_weight = defaultdict(float)
 # MFI amount will be multiplied by MFI weight
 mfi_sell_amount = 5000000
 mfi_buy_amount  = 3000000
-cci_sell_amount = 60000000
-cci_buy_amount  = 60000000
+cci_sell_amount = 40000000
+cci_buy_amount  = 40000000
 stochrsi_buy_amount  = 3000000
 
 # 15m supertrend order amount 

@@ -550,11 +550,9 @@ if __name__=='__main__':
     #define doge symbol 
     doge = "DOGE/KRW"
     btc = "BTC/KRW"
-    xrp = "XRP/KRW"
-    sol = "SOL/KRW"
 
     #defile list of symbols 
-    symbols= [doge]
+    symbols= [doge, btc]
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
@@ -568,7 +566,19 @@ if __name__=='__main__':
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
 
-        # monitoring every 30 seconds
+    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_cci_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, btc)
+
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
+    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, btc)
+
+    # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
 

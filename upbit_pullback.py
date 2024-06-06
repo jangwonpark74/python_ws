@@ -36,8 +36,8 @@ mfi_weight = defaultdict(float)
 # MFI amount will be multiplied by MFI weight
 mfi_sell_amount = 5000000
 mfi_buy_amount  = 3000000
-cci_sell_amount = 5000000
-cci_buy_amount  = 4000000
+cci_sell_amount = 30000000
+cci_buy_amount  = 10000000
 stochrsi_buy_amount  = 3000000
 
 # 15m supertrend order amount 
@@ -46,8 +46,8 @@ supertrend_buy_amount = 6000000
 
 
 # Threshold for each trading strategy
-cci_low_threshold = -110
-cci_high_threshold = 110
+cci_low_threshold = -120
+cci_high_threshold = 150
 mfi_high_threshold = 80
 stochrsi_low_threshold = 25
 
@@ -211,6 +211,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df['cci_5m']   = round(talib.CCI(df['high'], df['low'], df['close'], timeperiod=14), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
+        cci_5m_pre = df['cci_5m'].iloc[-2]
         # store information for dispaly
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
@@ -220,6 +221,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_30m['cci_30m']   = round(talib.CCI(df_30m['high'], df_30m['low'], df_30m['close'], timeperiod=14), 1)
 
         cci_30m = df_30m['cci_30m'].iloc[-1]
+        cci_30m_pre = df_30m['cci_30m'].iloc[-2]
 
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -228,6 +230,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1h['cci_1h']   = round(talib.CCI(df_1h['high'], df_1h['low'], df_1h['close'], timeperiod=14), 1)
 
         cci_1h = df_1h['cci_1h'].iloc[-1]
+        cci_1h_pre = df_1h['cci_1h'].iloc[-2]
 
         ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -237,14 +240,16 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
         # Scalping based on MFI and RSI every 4 hours
         cci_4h = df_4h['cci_4h'].iloc[-1]
+        cci_4h_pre = df_4h['cci_4h'].iloc[-2]
 
         cci = (cci_5m + cci_30m + cci_1h + cci_4h)/4.0
+        cci_pre = (cci_5m_pre + cci_1h_pre + cci_4h_pre)/4.0
 
         global cci_sell_decision
-        cci_sell_decision[symbol] = (cci > cci_high_threshold)
+        cci_sell_decision[symbol] = (cci_pre > cci_high_threshold) and (cci <cci_high_threshold)
 
         global cci_buy_decision
-        cci_buy_decision[symbol] = (cci < cci_low_threshold)
+        cci_buy_decision[symbol] = (cci_pre < cci_low_threshold ) and (cci > cci_low_threshold)
 
         print(f'\n----------- {symbol} CCI Signal Analysis (5 minutes) --------------')
         pprint(df.iloc[-1])
@@ -547,9 +552,10 @@ if __name__=='__main__':
     doge = "DOGE/KRW"
     btc = "BTC/KRW"
     xrp = "XRP/KRW"
+    sol = "SOL/KRW"
 
     #defile list of symbols 
-    symbols= [doge, btc, xrp]
+    symbols= [doge]
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
@@ -563,31 +569,7 @@ if __name__=='__main__':
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
 
-    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_cci_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, btc)
-
-    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
-    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
-    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
-    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
-    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, btc)
- 
-    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
-
-    schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
-    schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
-    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
-    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, xrp)
-
-    # monitoring every 30 seconds
+        # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
 

@@ -28,6 +28,7 @@ is_supertrend_up = defaultdict(bool)
 
 # Current CCI 
 current_cci = defaultdict(float)
+previous_cci = defaultdict(float)
 
 # MFI(14), 4 hour based weight control
 mfi_weight = defaultdict(float)
@@ -36,8 +37,8 @@ mfi_weight = defaultdict(float)
 # MFI amount will be multiplied by MFI weight
 mfi_sell_amount = 5000000
 mfi_buy_amount  = 3000000
-cci_sell_amount = 30000000
-cci_buy_amount  = 10000000
+cci_sell_amount = 60000000
+cci_buy_amount  = 60000000
 stochrsi_buy_amount  = 3000000
 
 # 15m supertrend order amount 
@@ -140,16 +141,24 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv_5m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['mfi_5m'] = round(talib.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14), 1)
+        df['mfi_5m'] = round(ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=14), 1)
 
         mfi_5m = df['mfi_5m'].iloc[-1]
         # store information for dispaly
+
+        ohlcv_15m = exchange.fetch_ohlcv(symbol, timeframe='15m')
+        df_15m = pd.DataFrame(ohlcv_15m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_15m['datetime'] = pd.to_datetime(df_15m['datetime'], utc=True, unit='ms')
+        df_15m['datetime'] = df_15m['datetime'].dt.tz_convert("Asia/Seoul")
+        df_15m['mfi_15m'] = round(ta.mfi(df_15m['high'], df_15m['low'], df_15m['close'], df_15m['volume'], length=14), 1)
+
+        mfi_15m = df_15m['mfi_15m'].iloc[-1]
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
         df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_30m['mfi_30m'] = round(talib.MFI(df_30m['high'], df_30m['low'], df_30m['close'], df_30m['volume'], timeperiod=14), 1)
+        df_30m['mfi_30m'] = round(ta.mfi(df_30m['high'], df_30m['low'], df_30m['close'], df_30m['volume'], length=14), 1)
 
         mfi_30m = df_30m['mfi_30m'].iloc[-1]
 
@@ -157,39 +166,23 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
         df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1h['mfi_1h'] = round(talib.MFI(df_1h['high'], df_1h['low'], df_1h['close'], df_1h['volume'], timeperiod=14), 1)
+        df_1h['mfi_1h'] = round(ta.mfi(df_1h['high'], df_1h['low'], df_1h['close'], df_1h['volume'], timeperiod=14), 1)
 
         mfi_1h = df_1h['mfi_1h'].iloc[-1]
 
-        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
-        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
-        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['mfi_4h'] = round(talib.MFI(df_4h['high'], df_4h['low'], df_4h['close'], df_4h['volume'], timeperiod=14), 1)
-
-        mfi_4h = df_4h['mfi_4h'].iloc[-1]
-
-        ohlcv_1d = exchange.fetch_ohlcv(symbol, timeframe='1d')
-        df_1d = pd.DataFrame(ohlcv_1d, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
-        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1d['mfi_1d'] = round(talib.MFI(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], timeperiod=14), 1)
-
-        mfi_1d = df_1d['mfi_1d'].iloc[-1]
-
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d)/5.0
+        mfi = (mfi_5m + mfi_15m + mfi_30m + mfi_1h)/5.0
 
         global mfi_weight
         mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
 
-        print(f'\n----------- {symbol} MFI Signal Analysis (5 minutes) --------------')
+        print(f'\n----------- {symbol} MFI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
+        print(f'\n----------- {symbol} MFI Signal Analysis (15 minutes) --------------')
+        pprint(df_15m.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis (30 minutes) --------------')
         pprint(df_30m.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis ( 1 hour) --------------')
         pprint(df_1h.iloc[-1])
-        print(f'\n----------- {symbol} MFI Signal Analysis (4 hours) --------------')
-        pprint(df_4h.iloc[-1])
 
         # current cci 
         cci = current_cci[symbol]
@@ -197,7 +190,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         # update data for execution of order
         global mfi_sell_decision
-        mfi_sell_decision[symbol] = (mfi*cci_factor) > mfi_high_threshold 
+        mfi_sell_decision[symbol] = (mfi*cci_factor) > mfi_high_threshold
 
     except Exception as e:
         logging.info("Exception in analyze_mfi_signal ", str(e))
@@ -208,42 +201,38 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv_5m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['cci_5m']   = round(talib.CCI(df['high'], df['low'], df['close'], timeperiod=14), 1)
+        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
         cci_5m_pre = df['cci_5m'].iloc[-2]
         # store information for dispaly
 
+        ohlcv_15m = exchange.fetch_ohlcv(symbol, timeframe='15m')
+        df_15m = pd.DataFrame(ohlcv_15m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_15m['datetime'] = pd.to_datetime(df_15m['datetime'], utc=True, unit='ms')
+        df_15m['datetime'] = df_15m['datetime'].dt.tz_convert("Asia/Seoul")
+        df_15m['cci_15m']   = round(ta.cci(df_15m['high'], df_15m['low'], df_15m['close'], length=14), 1)
+
+        cci_15m = df_15m['cci_15m'].iloc[-1]
+        cci_15m_pre = df_15m['cci_15m'].iloc[-2]
+
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
         df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_30m['cci_30m']   = round(talib.CCI(df_30m['high'], df_30m['low'], df_30m['close'], timeperiod=14), 1)
+        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=14), 1)
 
         cci_30m = df_30m['cci_30m'].iloc[-1]
         cci_30m_pre = df_30m['cci_30m'].iloc[-2]
 
-        ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
-        df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
-        df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1h['cci_1h']   = round(talib.CCI(df_1h['high'], df_1h['low'], df_1h['close'], timeperiod=14), 1)
+        cci = (cci_5m + cci_15m +cci_30m)/3.0
+        cci_pre = (cci_5m_pre + cci_15m_pre + cci_30m_pre)/3.0
 
-        cci_1h = df_1h['cci_1h'].iloc[-1]
-        cci_1h_pre = df_1h['cci_1h'].iloc[-2]
+        global current_cci
+        global previous_cci
+        previous_cci[symbol] = cci_pre
+        current_cci[symbol] = cci
 
-        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
-        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_4h['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['cci_4h']   = round(talib.CCI(df_4h['high'], df_4h['low'], df_4h['close'], timeperiod=14), 1)
-
-        # Scalping based on MFI and RSI every 4 hours
-        cci_4h = df_4h['cci_4h'].iloc[-1]
-        cci_4h_pre = df_4h['cci_4h'].iloc[-2]
-
-        cci = (cci_5m + cci_30m + cci_1h + cci_4h)/4.0
-        cci_pre = (cci_5m_pre + cci_1h_pre + cci_4h_pre)/4.0
 
         global cci_sell_decision
         cci_sell_decision[symbol] = (cci_pre > cci_high_threshold) and (cci <cci_high_threshold)
@@ -251,14 +240,12 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         global cci_buy_decision
         cci_buy_decision[symbol] = (cci_pre < cci_low_threshold ) and (cci > cci_low_threshold)
 
-        print(f'\n----------- {symbol} CCI Signal Analysis (5 minutes) --------------')
+        print(f'\n----------- {symbol} CCI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
+        print(f'\n----------- {symbol} CCI Signal Analysis (15 minutes) --------------')
+        pprint(df_15m.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis (30 minutes) --------------')
         pprint(df_30m.iloc[-1])
-        print(f'\n----------- {symbol} CCI Signal Analysis ( 1 hour) --------------')
-        pprint(df_1h.iloc[-1])
-        print(f'\n----------- {symbol} CCI Signal Analysis (4 hours) --------------')
-        pprint(df_4h.iloc[-1])
 
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))
@@ -519,6 +506,15 @@ def monitor_signals(symbols : list[str]):
         orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_sell_decision[s], cci_buy_decision[s], stochrsi_buy_decision[s], \
                                    supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[s]]
     pprint(orders)
+
+    cci_name = ["Symbol", "Previous CCI", "Current CCI"]
+    cci_analysis = pd.DataFrame(columns = cci_name)
+    for s in symbols:
+        cci_analysis.loc[len(cci_analysis)]= [s, previous_cci[s], current_cci[s]]
+
+    print("\n---------------- cci values  -----------------")
+    pprint(cci_analysis)
+
 
 def monitor_balance(exchange):
     try:

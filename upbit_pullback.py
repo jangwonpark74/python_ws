@@ -168,7 +168,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
         df_4h['mfi_4h'] = round(ta.mfi(df_4h['high'], df_4h['low'], df_4h['close'], df_4h['volume'], length=14), 1)
 
-        mfi_4h = df_4h['mfi_1h'].iloc[-1]
+        mfi_4h = df_4h['mfi_4h'].iloc[-1]
 
         mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h)/4.0
 

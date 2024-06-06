@@ -28,7 +28,7 @@ is_supertrend_up = defaultdict(bool)
 
 # Current CCI 
 current_cci = defaultdict(float)
-previous_cci = defaultdict(float)
+current_mfi = defaultdict(float)
 
 # MFI(14), 4 hour based weight control
 mfi_weight = defaultdict(float)
@@ -146,14 +146,6 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         mfi_5m = df['mfi_5m'].iloc[-1]
         # store information for dispaly
 
-        ohlcv_15m = exchange.fetch_ohlcv(symbol, timeframe='15m')
-        df_15m = pd.DataFrame(ohlcv_15m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_15m['datetime'] = pd.to_datetime(df_15m['datetime'], utc=True, unit='ms')
-        df_15m['datetime'] = df_15m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_15m['mfi_15m'] = round(ta.mfi(df_15m['high'], df_15m['low'], df_15m['close'], df_15m['volume'], length=14), 1)
-
-        mfi_15m = df_15m['mfi_15m'].iloc[-1]
-
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
@@ -166,11 +158,22 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
         df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1h['mfi_1h'] = round(ta.mfi(df_1h['high'], df_1h['low'], df_1h['close'], df_1h['volume'], timeperiod=14), 1)
+        df_1h['mfi_1h'] = round(ta.mfi(df_1h['high'], df_1h['low'], df_1h['close'], df_1h['volume'], length=14), 1)
 
         mfi_1h = df_1h['mfi_1h'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_15m + mfi_30m + mfi_1h)/5.0
+        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
+        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
+        df_4h['mfi_4h'] = round(ta.mfi(df_4h['high'], df_4h['low'], df_4h['close'], df_4h['volume'], length=14), 1)
+
+        mfi_4h = df_4h['mfi_1h'].iloc[-1]
+
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h)/4.0
+
+        global current_mfi
+        current_mfi[symbol] = mfi
 
         global mfi_weight
         mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
@@ -510,14 +513,13 @@ def monitor_signals(symbols : list[str]):
                                    supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[s]]
     pprint(orders)
 
-    cci_name = ["Symbol", "Current CCI"]
-    cci_analysis = pd.DataFrame(columns = cci_name)
+    ta_index_name = ["Symbol", "Current CCI", "Current MFI"]
+    cci_mfi_analysis = pd.DataFrame(columns = ta_index_name)
     for s in symbols:
-        cci_analysis.loc[len(cci_analysis)]= [s, current_cci[s]]
+        cci_mfi_analysis.loc[len(cci_analysis)]= [s, current_cci[s], current_mfi[s]]
 
-    print("\n---------------- cci values  -----------------")
-    pprint(cci_analysis)
-
+    print("\n---------------- average cci and mfi values  -----------------")
+    pprint(cci_mfi_analysis)
 
 def monitor_balance(exchange):
     try:

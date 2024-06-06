@@ -516,7 +516,7 @@ def monitor_signals(symbols : list[str]):
     ta_index_name = ["Symbol", "Current CCI", "Current MFI"]
     cci_mfi_analysis = pd.DataFrame(columns = ta_index_name)
     for s in symbols:
-        cci_mfi_analysis.loc[len(cci_analysis)]= [s, current_cci[s], current_mfi[s]]
+        cci_mfi_analysis.loc[len(cci_mfi_analysis)]= [s, current_cci[s], current_mfi[s]]
 
     print("\n---------------- average cci and mfi values  -----------------")
     pprint(cci_mfi_analysis)

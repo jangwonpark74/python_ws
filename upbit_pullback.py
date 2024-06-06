@@ -48,7 +48,7 @@ supertrend_buy_amount = 6000000
 
 # Threshold for each trading strategy
 cci_low_threshold = -120
-cci_high_threshold = 150
+cci_high_threshold = 140
 mfi_high_threshold = 80
 stochrsi_low_threshold = 25
 
@@ -204,17 +204,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
-        cci_5m_pre = df['cci_5m'].iloc[-2]
         # store information for dispaly
-
-        ohlcv_15m = exchange.fetch_ohlcv(symbol, timeframe='15m')
-        df_15m = pd.DataFrame(ohlcv_15m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df_15m['datetime'] = pd.to_datetime(df_15m['datetime'], utc=True, unit='ms')
-        df_15m['datetime'] = df_15m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_15m['cci_15m']   = round(ta.cci(df_15m['high'], df_15m['low'], df_15m['close'], length=14), 1)
-
-        cci_15m = df_15m['cci_15m'].iloc[-1]
-        cci_15m_pre = df_15m['cci_15m'].iloc[-2]
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -222,30 +212,43 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
         df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=14), 1)
 
-        cci_30m = df_30m['cci_30m'].iloc[-1]
-        cci_30m_pre = df_30m['cci_30m'].iloc[-2]
+        cci_30m= df_30m['cci_30m'].iloc[-1]
 
-        cci = (cci_5m + cci_15m +cci_30m)/3.0
-        cci_pre = (cci_5m_pre + cci_15m_pre + cci_30m_pre)/3.0
+        ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
+        df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
+        df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
+        df_1h['cci_1h']   = round(ta.cci(df_1h['high'], df_1h['low'], df_1h['close'], length=14), 1)
+
+        cci_1h = df_1h['cci_1h'].iloc[-1]
+
+        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
+        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
+        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=14), 1)
+
+        cci_4h = df_4h['cci_4h'].iloc[-1]
+
+        cci = (cci_5m + cci_30m + cci_1h + cci_4h)/4.0
 
         global current_cci
-        global previous_cci
-        previous_cci[symbol] = cci_pre
         current_cci[symbol] = cci
 
-
         global cci_sell_decision
-        cci_sell_decision[symbol] = (cci_pre > cci_high_threshold) and (cci <cci_high_threshold)
+        cci_sell_decision[symbol] = (cci > cci_high_threshold)
 
         global cci_buy_decision
-        cci_buy_decision[symbol] = (cci_pre < cci_low_threshold ) and (cci > cci_low_threshold)
+        cci_buy_decision[symbol] = (cci < cci_low_threshold ) 
 
         print(f'\n----------- {symbol} CCI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
-        print(f'\n----------- {symbol} CCI Signal Analysis (15 minutes) --------------')
-        pprint(df_15m.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis (30 minutes) --------------')
         pprint(df_30m.iloc[-1])
+        print(f'\n----------- {symbol} CCI Signal Analysis ( 1 hour ) --------------')
+        pprint(df_1h.iloc[-1])
+        print(f'\n----------- {symbol} CCI Signal Analysis ( 4 hour ) --------------')
+        pprint(df_4h.iloc[-1])
 
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))
@@ -507,10 +510,10 @@ def monitor_signals(symbols : list[str]):
                                    supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[s]]
     pprint(orders)
 
-    cci_name = ["Symbol", "Previous CCI", "Current CCI"]
+    cci_name = ["Symbol", "Current CCI"]
     cci_analysis = pd.DataFrame(columns = cci_name)
     for s in symbols:
-        cci_analysis.loc[len(cci_analysis)]= [s, previous_cci[s], current_cci[s]]
+        cci_analysis.loc[len(cci_analysis)]= [s, current_cci[s]]
 
     print("\n---------------- cci values  -----------------")
     pprint(cci_analysis)

@@ -180,12 +180,12 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         print(f'\n----------- {symbol} MFI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
-        print(f'\n----------- {symbol} MFI Signal Analysis (15 minutes) --------------')
-        pprint(df_15m.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis (30 minutes) --------------')
         pprint(df_30m.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis ( 1 hour) --------------')
         pprint(df_1h.iloc[-1])
+        print(f'\n----------- {symbol} MFI Signal Analysis ( 4 hour) --------------')
+        pprint(df_4h.iloc[-1])
 
         # current cci 
         cci = current_cci[symbol]

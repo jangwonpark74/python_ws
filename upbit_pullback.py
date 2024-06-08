@@ -47,10 +47,10 @@ supertrend_buy_amount = 6000000
 
 
 # Threshold for each trading strategy
-cci_low_threshold = -120
-cci_high_threshold = 140
-mfi_high_threshold = 80
-stochrsi_low_threshold = 25
+cci_low_threshold = -120.0
+cci_high_threshold = 140.0
+mfi_high_threshold = 80.0
+stochrsi_low_threshold = 25.0
 
 # Pullback stratey 
 pullback_portion = 0.5
@@ -233,7 +233,15 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        cci = (cci_5m + cci_30m + cci_1h + cci_4h)/4.0
+        ohlcv_1d = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df_1d = pd.DataFrame(ohlcv_1d, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
+        df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=14), 1)
+
+        cci_1d = df_4h['cci_1d'].iloc[-1]
+
+        cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d)/5.0
 
         global current_cci
         current_cci[symbol] = cci
@@ -252,6 +260,9 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis ( 4 hour ) --------------')
         pprint(df_4h.iloc[-1])
+        print(f'\n----------- {symbol} CCI Signal Analysis ( 1 day ) --------------')
+        pprint(df_1d.iloc[-1])
+
 
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))

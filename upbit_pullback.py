@@ -239,7 +239,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
         df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=14), 1)
 
-        cci_1d = df_4h['cci_1d'].iloc[-1]
+        cci_1d = df_1d['cci_1d'].iloc[-1]
 
         cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d)/5.0
 
@@ -266,6 +266,41 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))
+
+def analyze_candle_pattern(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        op = df['open'].astype(float)
+        hi = df['high'].astype(float)
+        lo = df['low'].astype(float)
+        cl = df['close'].astype(float)
+
+        df['MARUBOZU'] = talib.CDLMARUBOZU(op, hi, lo, cl)
+        df['3STARSINSOUTH'] = talib.CDL3STARSINSOUTH(op, hi, lo, cl)
+        df['3OUTSIDE'] = talib.CDL3OUTSIDE(op,hi, lo, cl)
+        df['3WHITESOLDIERS'] = talib.CDL3WHITESOLDIERS(op, hi, lo, cl)
+        df['BREAKAWAY'] = talib.CDLBREAKAWAY(op, hi, lo, cl)
+        df['EVENINGSTAR'] = talib.CDLEVENINGSTAR(op, hi, lo, cl)
+        df['HAMMER'] = talib.CDLHAMMER(op, hi, lo, cl)
+        df['HARAMICROSS'] = talib.CDLHARAMICROSS(op, hi, lo, cl)
+        df['INVERTEDHAMMER'] = talib.CDLINVERTEDHAMMER(op, hi, lo, cl)
+        df['MATCHINGLOW'] = talib.CDLMATCHINGLOW(op, hi, lo, cl)
+        df['MORNINGDOJISTAR'] = talib.CDLMORNINGDOJISTAR(op, hi, lo, cl)
+        df['RICKSHAWMAN'] = talib.CDLRICKSHAWMAN(op, hi, lo, cl)
+        df['RISEFALL3METHODS'] = talib.CDLRISEFALL3METHODS(op, hi, lo, cl)
+        df['SEPARATINGLINES'] = talib.CDLSEPARATINGLINES(op, hi, lo, cl)
+        df['UNIQUE3RIVER'] = talib.CDLUNIQUE3RIVER(op, hi, lo, cl)
+        df['THRUSTING'] = talib.CDLTHRUSTING(op, hi, lo, cl)
+        df['XSIDEGAP3METHODS'] = talib.CDLXSIDEGAP3METHODS(op, hi, lo, cl)
+
+        pprint(df.tail(20))
+ 
+    except Exception as e:
+        logging.info("Exception in analyze_candle_pattern : ", str(e))
 
 
 def analyze_supertrend_signal(exchange, symbol: str)->None:
@@ -594,6 +629,7 @@ if __name__=='__main__':
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
+    schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
 
     while True:
         schedule.run_pending()

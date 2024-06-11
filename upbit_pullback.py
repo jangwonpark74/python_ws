@@ -297,7 +297,7 @@ def analyze_candle_pattern(exchange, symbol: str)->None:
         df['THRUSTING'] = talib.CDLTHRUSTING(op, hi, lo, cl)
         df['XSIDEGAP3METHODS'] = talib.CDLXSIDEGAP3METHODS(op, hi, lo, cl)
 
-        pprint(df.tail(20))
+        pprint(df.iloc[-1])
  
     except Exception as e:
         logging.info("Exception in analyze_candle_pattern : ", str(e))

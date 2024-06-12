@@ -269,7 +269,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
 def analyze_candle_pattern(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -504,7 +504,7 @@ def supertrend_buy_coin(exchange,symbol: str)->None:
             return
 
         market_buy_coin(exchange, symbol, amount)
-        save_data(symbol,"Supertrend", "buy", price, amount) 
+        save_data(symbol,"Supertrend", "buy", price, amount)
 
         logging.info(f"Supertrend buy order placed for {symbol} at price: {price}, amount = {amount}")
         show_orderbook(orderbook)

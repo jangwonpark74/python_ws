@@ -155,15 +155,13 @@ def analyze_btc_momentum(exchange, symbol:str)->None:
         df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
 
         # Get the latest value
-        p_stochrsi_k = df['stochrsi_k'].iloc[-2]
-        p_stochrsi_d = df['stochrsi_d'].iloc[-2]
-        c_stochrsi_k = df['stochrsi_k'].iloc[-1]
-        c_stochrsi_d = df['stochrsi_d'].iloc[-1]
+        stochrsi_k = df['stochrsi_k'].iloc[-1]
+        stochrsi_d = df['stochrsi_d'].iloc[-1]
 
         # Stoch rsi cross-over strategy
 
-        buy  = (p_stochrsi_k < p_stochrsi_d) and (c_stochrsi_k > c_stochrsi_d) and (c_stochrsi_k < stochrsi_low_threshold)
-        sell = (p_stochrsi_k > p_stochrsi_d) and (c_stochrsi_k < c_stochrsi_d)
+        buy  = (stochrsi_k > stochrsi_d)
+        sell = (stochrsi_k < stochrsi_d) 
 
         global btc_stochrsi_buy_decision
         global btc_stochrsi_sell_decision

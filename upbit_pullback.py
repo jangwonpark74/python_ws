@@ -19,7 +19,14 @@ from datetime import datetime
 mfi_sell_decision = defaultdict(bool)
 cci_buy_decision = defaultdict(bool)
 cci_sell_decision = defaultdict(bool)
+
 stochrsi_buy_decision = defaultdict(bool)
+stochrsi_sell_decision = defaultdict(bool)
+
+# btc stochrsi signal for dual momentum strategy
+btc_stochrsi_buy_decision = defaultdict(bool)
+btc_stochrsi_sell_decision = defaultdict(bool)
+
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_decision = defaultdict(bool)
 
@@ -130,6 +137,43 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
         df['stochrsi_buy']  = buy
 
         print(f'\n----------- {symbol} STOCHRSI Signal Analysis (30 minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        logging.info("Exception in analyze_stochrsi_signal: ", str(e))
+
+def analyze_btc_momentum(exchange, symbol:str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        stochrsi = ta.stochrsi(df['close'], length=14, fastk_period=3, fastd_period=3, append=True)
+
+        df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
+        df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
+
+        # Get the latest value
+        p_stochrsi_k = df['stochrsi_k'].iloc[-2]
+        p_stochrsi_d = df['stochrsi_d'].iloc[-2]
+        c_stochrsi_k = df['stochrsi_k'].iloc[-1]
+        c_stochrsi_d = df['stochrsi_d'].iloc[-1]
+
+        # Stoch rsi cross-over strategy
+
+        buy  = (p_stochrsi_k < p_stochrsi_d) and (c_stochrsi_k > c_stochrsi_d) and (c_stochrsi_k < stochrsi_low_threshold)
+        sell = (p_stochrsi_k > p_stochrsi_d) and (c_stochrsi_k < c_stochrsi_d)
+
+        global btc_stochrsi_buy_decision
+        global btc_stochrsi_sell_decision
+        btc_stochrsi_buy_decision[symbol] = buy
+        btc_stochrsi_sell_decision[symbol] = sell
+
+        df['btc_stochrsi_buy']  = buy
+        df['btc_stochrsi_sell'] = sell
+
+        print(f'\n----------- {symbol} BTC STOCHRSI Signal Analysis (1 day) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -576,6 +620,16 @@ def monitor_balance(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
+def monitor_btc_stochrsi_signal(symbol: str):
+    print("\n---------------- btc stoch rsi (1d) signal -----------------")
+
+    column_name= ["Symbol", "STOCHRSI buy", "STOCHRSI sell" ]
+    orders = pd.DataFrame(columns = column_name)
+    s = symbol
+    orders[0] = [s, btc_stochrsi_buy_decision[s], btc_stochrsi_sell_decision[s]]
+    pprint(orders)
+
+
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
     print(f'Initialized CCXT with version : {ccxt.__version__}')
@@ -630,6 +684,8 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
+    schedule.every(30).seconds.do(analyze_btc_momentum, exchange, btc)
+    schedule.every(30).seconds.do(monitor_btc_stochrsi_signal, btc)
 
     while True:
         schedule.run_pending()

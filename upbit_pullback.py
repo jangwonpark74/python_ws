@@ -344,6 +344,50 @@ def analyze_candle_pattern(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_candle_pattern : ", str(e))
 
+def analyze_dual_momentum(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        price = df['close'].astype(float)
+
+        # Calculate price momentum
+        returns = price.pct_change()
+        price_momentum = returns.rolling(window=20).mean()
+
+        df['price_momentum'] = price_momentum
+
+        # Calculate trend momentum
+        price_ma = price.rolling(window=50).mean()
+        trend_momentum = (price> price_ma).astype(int)
+
+        df['trend_momentum'] = trend_momentum
+
+        # Combine price and trend momentum
+        combined_momentum = price_momentum * trend_momentum
+
+        df['combined_momentum'] = combined_momentum
+
+        # Calcuate current momentum 
+        current_momentum = combined_momentum.iloc[-1]
+        previous_momentum = combined_momentum.iloc[-2]
+
+
+        buy = current_momentum > previous_momentum
+        sell = current_momentum < previous_momentum 
+
+        df['buy'] = buy
+        df['sell'] = sell
+
+        print(f'\n----------- {symbol} Dual Momentum Analysis ( 1 day ) --------------')
+        pprint(df.iloc[-1])
+
+
+    except Exception as e:
+        logging.info("Exception in analyze_candle_pattern : ", str(e))
+
 
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
@@ -658,6 +702,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
+    schedule.every(30).seconds.do(analyze_dual_momentum, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)

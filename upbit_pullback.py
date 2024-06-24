@@ -410,16 +410,16 @@ def calculate_trend_momentum(price: pd.Series, short_window: int = 12, long_wind
 
 def analyze_dualmomentum_signal(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
         price = df['close'].astype(float)
-        df['price_momentum'] = calculate_price_momentum(price, method='macd', period=20)
+        df['price_momentum'] = calculate_price_momentum(price, method='momentum', period=20)
         df['trend_momentum'] = calculate_trend_momentum(price)
 
-        df['combined_momentum'] = df['price_momentum'] * df['trend_momentum'] 
+        df['combined_momentum'] = df['price_momentum'] * df['trend_momentum']
 
         # Calcuate current momentum 
         current_momentum = df['combined_momentum'].iloc[-1]
@@ -436,10 +436,10 @@ def analyze_dualmomentum_signal(exchange, symbol: str)->None:
         df['current_momentum'] = current_momentum
         df['previous_momentum'] = previous_momentum
 
-        dualmomentum_buy_decision[symbol] = buy  and (current_cci_30m[symbol] < -100)
-        dualmomentum_sell_decision[symbol] = sell and (current_cci_30m[symbol] > 100)
+        dualmomentum_buy_decision[symbol] = buy 
+        dualmomentum_sell_decision[symbol] = sell
 
-        print(f'\n----------- {symbol} Dual Momentum Analysis ( 1 day ) --------------')
+        print(f'\n----------- {symbol} Dual Momentum Analysis ( 4h ) --------------')
         pprint(df.iloc[-1])
 
 
@@ -803,6 +803,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
+    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
@@ -811,13 +812,14 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
-    schedule.every(30).minutes.do(execute_dualmomentum_sell, exchange, doge)
-    schedule.every(30).minutes.do(execute_dualmomentum_buy, exchange, doge)
+    schedule.every(4).hours.do(execute_dualmomentum_sell, exchange, doge)
+    schedule.every(4).hours.do(execute_dualmomentum_buy, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, xrp)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
@@ -826,15 +828,13 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, xrp)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, xrp)
-    schedule.every(30).minutes.do(execute_dualmomentum_sell, exchange, xrp)
-    schedule.every(30).minutes.do(execute_dualmomentum_buy, exchange, xrp)
+    schedule.every(4).hours.do(execute_dualmomentum_sell, exchange, xrp)
+    schedule.every(4).hours.do(execute_dualmomentum_buy, exchange, xrp)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
-    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, doge)
-    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, xrp)
 
     while True:
         schedule.run_pending()

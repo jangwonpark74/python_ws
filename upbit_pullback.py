@@ -30,6 +30,9 @@ momentum_sell_decision = defaultdict(bool)
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_decision = defaultdict(bool)
 
+# mfi momentum (30m)
+mfi_momentum_30m = defaultdict(bool)
+
 # dual momentum decision
 dualmomentum_sell_decision = defaultdict(bool)
 dualmomentum_buy_decision = defaultdict(bool)
@@ -204,6 +207,9 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_30m['mfi_30m'] = round(ta.mfi(df_30m['high'], df_30m['low'], df_30m['close'], df_30m['volume'], length=14), 1)
 
         mfi_30m = df_30m['mfi_30m'].iloc[-1]
+
+        global mfi_momentum_30m 
+        mfi_momentum_30m[symbol] = (mfi_30m > 50)
 
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])

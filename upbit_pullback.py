@@ -34,9 +34,6 @@ supertrend_buy_decision = defaultdict(bool)
 dualmomentum_sell_decision = defaultdict(bool)
 dualmomentum_buy_decision = defaultdict(bool)
 
-# Supertrend is_uptrend
-is_supertrend_up = defaultdict(bool)
-
 # Current CCI 
 current_cci = defaultdict(float)
 current_mfi = defaultdict(float)
@@ -52,13 +49,13 @@ cci_sell_amount = 40000000
 cci_buy_amount  = 40000000
 stochrsi_buy_amount  = 3000000
 
-# 15m supertrend order amount 
-supertrend_sell_amount = 6000000
-supertrend_buy_amount = 6000000
+# supertrend order amount 
+supertrend_sell_amount = 2000000
+supertrend_buy_amount  = 2000000
 
 # dualmomentum order amount 
-dualmomentum_sell_amount = 6000000
-dualmomentum_buy_amount = 6000000
+dualmomentum_sell_amount = 2000000
+dualmomentum_buy_amount = 2000000
 
 # Threshold for each trading strategy
 cci_low_threshold = -120.0
@@ -416,7 +413,7 @@ def analyze_dualmomentum_signal(exchange, symbol: str)->None:
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
         # upto two weeks analyze supertrend 
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='15m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -447,23 +444,16 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
                 if (not df['in_uptrend'][i] ) and (df['upperband'][i] > df['upperband'][p]):
                     df.loc[i, 'upperband'] = df.loc[p, 'upperband']
 
-        print('\n----------- Analyze supertrend(4h) --------------')
+        print('\n----------- Analyze supertrend(30m) --------------')
         pprint(df.iloc[-1])
 
-        prev = df.iloc[-2]['in_uptrend']
         curr = df.iloc[-1]['in_uptrend']
-        sell = (not curr) and prev
-        buy  = curr and (not prev)
-
-
-        global is_supertrend_up
-        is_supertrend_up[symbol] = curr
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = sell
+        supertrend_sell_decision[symbol] = curr
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] = buy
+        supertrend_buy_decision[symbol] = ~curr
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -711,12 +701,12 @@ def execute_dualmomentum_buy(exchange, symbol: str):
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
 
-    column_name= ["Symbol", "MFI Sell", "CCI Sell", "CCI Buy", "STOCHRSI buy", "SuperT-Sell", "SuperT-Buy", "Supertrend Up" ]
+    column_name= ["Symbol", "MFI Sell", "CCI Sell", "CCI Buy", "STOCHRSI buy", "SuperTrend Sell", "SuperTrend Buy"]
     orders = pd.DataFrame(columns = column_name)
 
     for s in symbols:
         orders.loc[len(orders)] = [s, mfi_sell_decision[s],cci_sell_decision[s], cci_buy_decision[s], stochrsi_buy_decision[s], \
-                                   supertrend_sell_decision[s], supertrend_buy_decision[s], is_supertrend_up[s]]
+                                   supertrend_sell_decision[s], supertrend_buy_decision[s]]
     pprint(orders)
 
     ta_index_name = ["Symbol", "Current CCI", "Current MFI"]
@@ -782,8 +772,8 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(6).hours.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(6).hours.do(execute_supertrend_buy, exchange, doge)
     schedule.every(12).hours.do(execute_dualmomentum_sell, exchange, doge)
     schedule.every(12).hours.do(execute_dualmomentum_buy, exchange, doge)
 
@@ -797,8 +787,8 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
-    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(6).hours.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(6).hours.do(execute_supertrend_buy, exchange, xrp)
     schedule.every(12).hours.do(execute_dualmomentum_sell, exchange, xrp)
     schedule.every(12).hours.do(execute_dualmomentum_buy, exchange, xrp)
 

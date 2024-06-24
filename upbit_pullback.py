@@ -56,6 +56,10 @@ stochrsi_buy_amount  = 3000000
 supertrend_sell_amount = 6000000
 supertrend_buy_amount = 6000000
 
+# dualmomentum order amount 
+dualmomentum_sell_amount = 6000000
+dualmomentum_buy_amount = 6000000
+
 # Threshold for each trading strategy
 cci_low_threshold = -120.0
 cci_high_threshold = 140.0
@@ -639,7 +643,7 @@ def dualmomentum_buy_coin(exchange,symbol: str)->None:
     try:
         orderbook = exchange.fetch_order_book(symbol)
         price     = orderbook['bids'][0][0]
-        amount    = supertrend_buy_amount
+        amount    = dualmomentum_buy_amount
 
         free_KRW = exchange.fetchBalance()['KRW']['free']
 

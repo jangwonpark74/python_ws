@@ -130,6 +130,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
 
         # Stoch rsi cross-over strategy
         buy  = (current_stochrsi_k > current_stochrsi_d) and (current_stochrsi_k < stochrsi_low_threshold)
+        sell = (current_stochrsi_k < current_stochrsi_d) and (current_stochrsi_k > stochrsi_high_threshold)
 
         global stochrsi_buy_decision
         stochrsi_buy_decision[symbol] = buy
@@ -161,7 +162,7 @@ def analyze_btc_momentum(exchange, symbol:str)->None:
         # Stoch rsi cross-over strategy
 
         buy  = (stochrsi_k > stochrsi_d)
-        sell = (stochrsi_k < stochrsi_d) 
+        sell = (stochrsi_k < stochrsi_d)
 
         global btc_stochrsi_buy_decision
         global btc_stochrsi_sell_decision
@@ -212,7 +213,15 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         mfi_4h = df_4h['mfi_4h'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h)/4.0
+        ohlcv_1d = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df_1d = pd.DataFrame(ohlcv_1d, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
+        df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
+        df_1d['mfi_1d'] = round(ta.mfi(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], length=14), 1)
+
+        mfi_1d = df_1d['mfi_1d'].iloc[-1]
+
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d)/5.0
 
         global current_mfi
         current_mfi[symbol] = mfi
@@ -228,6 +237,8 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis ( 4 hour) --------------')
         pprint(df_4h.iloc[-1])
+        print(f'\n----------- {symbol} MFI Signal Analysis ( 1 day) --------------')
+        pprint(df_1d.iloc[-1])
 
         # current cci 
         cci = current_cci[symbol]

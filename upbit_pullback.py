@@ -23,9 +23,9 @@ cci_sell_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
 stochrsi_sell_decision = defaultdict(bool)
 
-# btc stochrsi signal for dual momentum strategy
-btc_stochrsi_buy_decision = defaultdict(bool)
-btc_stochrsi_sell_decision = defaultdict(bool)
+# xrp stochrsi signal for dual momentum strategy
+xrp_stochrsi_buy_decision = defaultdict(bool)
+xrp_stochrsi_sell_decision = defaultdict(bool)
 
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_decision = defaultdict(bool)
@@ -58,6 +58,7 @@ cci_low_threshold = -120.0
 cci_high_threshold = 140.0
 mfi_high_threshold = 80.0
 stochrsi_low_threshold = 25.0
+stochrsi_high_threshold = 83.0
 
 # Pullback stratey 
 pullback_portion = 0.5
@@ -143,7 +144,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_stochrsi_signal: ", str(e))
 
-def analyze_btc_momentum(exchange, symbol:str)->None:
+def analyze_xrp_momentum(exchange, symbol:str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -164,15 +165,15 @@ def analyze_btc_momentum(exchange, symbol:str)->None:
         buy  = (stochrsi_k > stochrsi_d)
         sell = (stochrsi_k < stochrsi_d)
 
-        global btc_stochrsi_buy_decision
-        global btc_stochrsi_sell_decision
-        btc_stochrsi_buy_decision[symbol] = buy
-        btc_stochrsi_sell_decision[symbol] = sell
+        global xrp_stochrsi_buy_decision
+        global xrp_stochrsi_sell_decision
+        xrp_stochrsi_buy_decision[symbol] = buy
+        xrp_stochrsi_sell_decision[symbol] = sell
 
-        df['btc_stochrsi_buy']  = buy
-        df['btc_stochrsi_sell'] = sell
+        df['xrp_stochrsi_buy']  = buy
+        df['xrp_stochrsi_sell'] = sell
 
-        print(f'\n----------- {symbol} BTC STOCHRSI Signal Analysis (1 day) --------------')
+        print(f'\n----------- {symbol} XRP STOCHRSI Signal Analysis (1 day) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
@@ -673,13 +674,13 @@ def monitor_balance(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
-def monitor_btc_stochrsi_signal(symbol: str):
-    print("\n---------------- btc stoch rsi (1d) signal -----------------")
+def monitor_xrp_stochrsi_signal(symbol: str):
+    print("\n---------------- xrp stoch rsi (1d) signal -----------------")
 
     column_name= ["Symbol", "STOCHRSI buy", "STOCHRSI sell" ]
     orders = pd.DataFrame(columns = column_name)
     s = symbol
-    orders[0] = [s, btc_stochrsi_buy_decision[s], btc_stochrsi_sell_decision[s]]
+    orders[0] = [s, xrp_stochrsi_buy_decision[s], xrp_stochrsi_sell_decision[s]]
     pprint(orders)
 
 
@@ -704,10 +705,10 @@ if __name__=='__main__':
 
     #define doge symbol 
     doge = "DOGE/KRW"
-    btc = "BTC/KRW"
+    xrp = "XRP/KRW"
 
     #defile list of symbols 
-    symbols= [doge, btc]
+    symbols= [doge, xrp]
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
@@ -722,24 +723,24 @@ if __name__=='__main__':
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
 
-    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_cci_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, btc)
-    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, btc)
+    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
 
-    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
-    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
-    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
-    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
-    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, btc)
-    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
+    schedule.every(15).minutes.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(15).minutes.do(execute_supertrend_buy, exchange, xrp)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
-    schedule.every(30).seconds.do(analyze_btc_momentum, exchange, btc)
-    schedule.every(30).seconds.do(monitor_btc_stochrsi_signal, btc)
+    schedule.every(30).seconds.do(analyze_xrp_momentum, exchange, xrp)
+    schedule.every(30).seconds.do(monitor_xrp_stochrsi_signal, xrp)
 
     while True:
         schedule.run_pending()

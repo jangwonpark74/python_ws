@@ -366,6 +366,48 @@ def analyze_candle_pattern(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_candle_pattern : ", str(e))
 
+# ChatGPT recommendation for price momentum calculation
+def calculate_price_momentum(price: pd.Series, method='ema', period=20) -> pd.Series:
+    if method == 'ema':
+        return price.pct_change().ewm(span=period, adjust=False).mean()
+    elif method == 'roc':
+        return ((price - price.shift(period)) / price.shift(period)) * 100
+    elif method == 'rsi':
+        delta = price.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        return 100 - (100 / (1 + rs))
+    elif method == 'momentum':
+        return price - price.shift(period)
+    elif method == 'macd':
+        short_ema = price.ewm(span=12, adjust=False).mean()
+        long_ema = price.ewm(span=26, adjust=False).mean()
+        macd = short_ema - long_ema
+        signal_line = macd.ewm(span=9, adjust=False).mean()
+        return macd - signal_line
+    elif method == 'stochastic':
+        high_rolling = price.rolling(window=14).max()
+        low_rolling = price.rolling(window=14).min()
+        stoch_k = 100 * (price - low_rolling) / (high_rolling - low_rolling)
+        return stoch_k.rolling(window=3).mean()
+    elif method == 'volatility_adjusted':
+        returns = price.pct_change()
+        volatility = returns.rolling(window=period).std()
+        return (price - price.shift(period)) / volatility
+    else:
+        raise ValueError("Unknown method")
+
+def calculate_trend_momentum(price: pd.Series, short_window: int = 12, long_window: int = 26, signal_window: int = 9) -> pd.Series:
+    short_ema = price.ewm(span=short_window, adjust=False).mean()
+    long_ema = price.ewm(span=long_window, adjust=False).mean()
+    macd = short_ema - long_ema
+    signal_line = macd.ewm(span=signal_window, adjust=False).mean()
+    macd_histogram = macd - signal_line
+
+    trend_momentum = (macd_histogram > 0).astype(int)
+    return trend_momentum
+
 def analyze_dualmomentum_signal(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
@@ -374,23 +416,10 @@ def analyze_dualmomentum_signal(exchange, symbol: str)->None:
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
         price = df['close'].astype(float)
+        df['price_momentum'] = calculate_price_momentum(price, method='macd', period=20)
+        df['trend_momentum'] = calculate_trend_momentum(price)
 
-        # Calculate price momentum
-        returns = price.pct_change()
-        price_momentum = returns.rolling(window=20).mean()
-
-        df['price_momentum'] = price_momentum
-
-        # Calculate trend momentum
-        price_ma = price.rolling(window=50).mean()
-        trend_momentum = (price> price_ma).astype(int)
-
-        df['trend_momentum'] = trend_momentum
-
-        # Combine price and trend momentum
-        combined_momentum = price_momentum * trend_momentum
-
-        df['combined_momentum'] = combined_momentum
+        df['combined_momentum'] = df['price_momentum'] * df['trend_momentum'] 
 
         # Calcuate current momentum 
         current_momentum = combined_momentum.iloc[-1]
@@ -404,6 +433,8 @@ def analyze_dualmomentum_signal(exchange, symbol: str)->None:
 
         df['dualmomentum_buy'] = buy
         df['dualmomentum_sell'] = sell
+        df['current_momentum'] = current_momentum
+        df['previous_momentum'] = previous_momentum
 
         dualmomentum_buy_decision[symbol] = buy  and (current_cci_30m[symbol] < -100)
         dualmomentum_sell_decision[symbol] = sell and (current_cci_30m[symbol] > 100)

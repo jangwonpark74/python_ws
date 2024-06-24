@@ -23,9 +23,9 @@ cci_sell_decision = defaultdict(bool)
 stochrsi_buy_decision = defaultdict(bool)
 stochrsi_sell_decision = defaultdict(bool)
 
-# xrp stochrsi signal for dual momentum strategy
-xrp_stochrsi_buy_decision = defaultdict(bool)
-xrp_stochrsi_sell_decision = defaultdict(bool)
+# momentum strategy based on stochrsi(1d)
+momentum_buy_decision = defaultdict(bool)
+momentum_sell_decision = defaultdict(bool)
 
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_decision = defaultdict(bool)
@@ -51,7 +51,6 @@ stochrsi_buy_amount  = 3000000
 # 15m supertrend order amount 
 supertrend_sell_amount = 6000000
 supertrend_buy_amount = 6000000
-
 
 # Threshold for each trading strategy
 cci_low_threshold = -120.0
@@ -144,7 +143,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_stochrsi_signal: ", str(e))
 
-def analyze_xrp_momentum(exchange, symbol:str)->None:
+def analyze_momentum_signal(exchange, symbol:str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -165,19 +164,19 @@ def analyze_xrp_momentum(exchange, symbol:str)->None:
         buy  = (stochrsi_k > stochrsi_d)
         sell = (stochrsi_k < stochrsi_d)
 
-        global xrp_stochrsi_buy_decision
-        global xrp_stochrsi_sell_decision
-        xrp_stochrsi_buy_decision[symbol] = buy
-        xrp_stochrsi_sell_decision[symbol] = sell
+        global momentum_buy_decision
+        global momentum_sell_decision
+        momentum_buy_decision[symbol] = buy
+        momentum_sell_decision[symbol] = sell
 
-        df['xrp_stochrsi_buy']  = buy
-        df['xrp_stochrsi_sell'] = sell
+        df['momentum_buy']  = buy
+        df['momentum_sell'] = sell
 
-        print(f'\n----------- {symbol} XRP STOCHRSI Signal Analysis (1 day) --------------')
+        print(f'\n----------- {symbol} Momentum Signal Analysis (1 day) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
-        logging.info("Exception in analyze_stochrsi_signal: ", str(e))
+        logging.info("Exception in analyze_momentum_signal: ", str(e))
 
 def analyze_mfi_signal(exchange, symbol: str)->None:
     try:
@@ -352,7 +351,7 @@ def analyze_candle_pattern(exchange, symbol: str)->None:
         df['XSIDEGAP3METHODS'] = talib.CDLXSIDEGAP3METHODS(op, hi, lo, cl)
 
         pprint(df.iloc[-1])
- 
+
     except Exception as e:
         logging.info("Exception in analyze_candle_pattern : ", str(e))
 
@@ -674,7 +673,7 @@ def monitor_balance(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
-def monitor_xrp_stochrsi_signal(symbol: str):
+def monitor_momentum_signal(symbol: str):
     print("\n---------------- xrp stoch rsi (1d) signal -----------------")
 
     column_name= ["Symbol", "STOCHRSI buy", "STOCHRSI sell" ]
@@ -739,8 +738,8 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
-    schedule.every(30).seconds.do(analyze_xrp_momentum, exchange, xrp)
-    schedule.every(30).seconds.do(monitor_xrp_stochrsi_signal, xrp)
+    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, doge)
+    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, xrp)
 
     while True:
         schedule.run_pending()

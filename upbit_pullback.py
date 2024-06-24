@@ -30,6 +30,10 @@ momentum_sell_decision = defaultdict(bool)
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_decision = defaultdict(bool)
 
+# dual momentum decision
+dualmomentum_sell_decision = defaultdict(bool)
+dualmomentum_buy_decision = defaultdict(bool)
+
 # Supertrend is_uptrend
 is_supertrend_up = defaultdict(bool)
 
@@ -355,7 +359,7 @@ def analyze_candle_pattern(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_candle_pattern : ", str(e))
 
-def analyze_dual_momentum(exchange, symbol: str)->None:
+def analyze_dualmomentum_signal(exchange, symbol: str)->None:
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -385,12 +389,17 @@ def analyze_dual_momentum(exchange, symbol: str)->None:
         current_momentum = combined_momentum.iloc[-1]
         previous_momentum = combined_momentum.iloc[-2]
 
-
         buy = current_momentum > previous_momentum
-        sell = current_momentum < previous_momentum 
+        sell = current_momentum < previous_momentum
 
-        df['buy'] = buy
-        df['sell'] = sell
+        global dualmomentum_buy_decision
+        global dualmomentum_sell_decision
+
+        df['dualmomentum_buy'] = buy
+        df['dualmomentum_sell'] = sell
+
+        dualmomentum_buy_decision[symbol] = buy
+        dualmomentum_sell_decision[symbol] = sell
 
         print(f'\n----------- {symbol} Dual Momentum Analysis ( 1 day ) --------------')
         pprint(df.iloc[-1])
@@ -609,6 +618,43 @@ def supertrend_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+def dualmomentum_sell_coin(exchange, symbol: str):
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['bids'][0][0]
+        amount    = dualmomentum_sell_amount
+
+        market_sell_coin(exchange, symbol, price, amount)
+        save_data(symbol,"Dual Momentum", "sell", price, amount) 
+        log_order(symbol, "Dual Momentum sell", price, amount)
+
+        pullback_order(exchange, symbol, price, amount)
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
+
+def dualmomentum_buy_coin(exchange,symbol: str)->None:
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['bids'][0][0]
+        amount    = supertrend_buy_amount
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        if free_KRW < amount:
+            return
+
+        market_buy_coin(exchange, symbol, amount)
+        save_data(symbol,"Dual Momentum", "buy", price, amount)
+
+        logging.info(f"Dual Momentum buy order placed for {symbol} at price: {price}, amount = {amount}")
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
 def execute_mfi_sell(exchange, symbol: str)->None:
     sell = mfi_sell_decision[symbol]
 
@@ -644,6 +690,19 @@ def execute_supertrend_buy(exchange, symbol: str):
 
     if sell:
         supertrend_buy_coin(exchange, symbol)
+
+def execute_dualmomentum_sell(exchange, symbol: str):
+    sell = dualmomentum_sell_decision[symbol]
+
+    if sell:
+        dualmomentum_sell_coin(exchange, symbol)
+
+def execute_dualmomentum_buy(exchange, symbol: str):
+    sell = dualmomentum_buy_decision[symbol]
+
+    if sell:
+        dualmomentum_buy_coin(exchange, symbol)
+
 
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -713,7 +772,7 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
-    schedule.every(30).seconds.do(analyze_dual_momentum, exchange, doge)
+    schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
@@ -721,11 +780,14 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(12).hours.do(execute_dualmomentum_sell, exchange, doge)
+    schedule.every(12).hours.do(execute_dualmomentum_buy, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
+    schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, xrp)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
@@ -733,6 +795,8 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
     schedule.every(15).minutes.do(execute_supertrend_sell, exchange, xrp)
     schedule.every(15).minutes.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(12).hours.do(execute_dualmomentum_sell, exchange, xrp)
+    schedule.every(12).hours.do(execute_dualmomentum_buy, exchange, xrp)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

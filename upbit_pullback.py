@@ -422,8 +422,8 @@ def analyze_dualmomentum_signal(exchange, symbol: str)->None:
         df['combined_momentum'] = df['price_momentum'] * df['trend_momentum'] 
 
         # Calcuate current momentum 
-        current_momentum = combined_momentum.iloc[-1]
-        previous_momentum = combined_momentum.iloc[-2]
+        current_momentum = df['combined_momentum'].iloc[-1]
+        previous_momentum = df['combined_momentum'].iloc[-2]
 
         buy = current_momentum > previous_momentum
         sell = current_momentum < previous_momentum

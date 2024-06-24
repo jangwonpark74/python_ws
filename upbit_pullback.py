@@ -459,7 +459,7 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         supertrend_sell_decision[symbol] = curr and (current_cci_30m[symbol] > 100)
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] = ~curr and (current_cci_30m[symbol] < -100)
+        supertrend_buy_decision[symbol] =  (not curr) and (current_cci_30m[symbol] < -100)
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))

@@ -37,6 +37,9 @@ mfi_momentum_30m = defaultdict(bool)
 dualmomentum_sell_decision = defaultdict(bool)
 dualmomentum_buy_decision = defaultdict(bool)
 
+# supertrend 
+is_supertrend_up = defaultdict(bool)
+
 # Current CCI 
 current_cci = defaultdict(float)
 current_mfi = defaultdict(float)
@@ -147,6 +150,7 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
         stochrsi_buy_decision[symbol] = buy
 
         df['stochrsi_buy']  = buy
+        df['stochrsi_sell'] = sell
 
         print(f'\n----------- {symbol} STOCHRSI Signal Analysis (30 minutes) --------------')
         pprint(df.iloc[-1])
@@ -232,10 +236,12 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
         df_1d['mfi_1d'] = round(ta.mfi(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], length=14), 1)
+        df_1d['mfi_7d_ma'] = df_1d['mfi_1d'].rolling(window=7).mean()
 
         mfi_1d = df_1d['mfi_1d'].iloc[-1]
+        mfi_7d = df_1d['mfi_7d_ma'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d)/5.0
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d + mfi_7d)/6.0
 
         global current_mfi
         current_mfi[symbol] = mfi
@@ -251,7 +257,7 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis ( 4 hour) --------------')
         pprint(df_4h.iloc[-1])
-        print(f'\n----------- {symbol} MFI Signal Analysis ( 1 day) --------------')
+        print(f'\n----------- {symbol} MFI Signal Analysis ( 1 day and 7 day) --------------')
         pprint(df_1d.iloc[-1])
 
         # current cci 
@@ -308,10 +314,12 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
         df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=14), 1)
+        df_1d['cci_7d_ma'] = df_1d['cci_1d'].rolling(window=7).mean()
 
         cci_1d = df_1d['cci_1d'].iloc[-1]
+        cci_7d = df_1d['cci_7d_ma'].iloc[-1] 
 
-        cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d)/5.0
+        cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d + cci_7d)/6.0
 
         global current_cci
         current_cci[symbol] = cci
@@ -330,7 +338,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         pprint(df_1h.iloc[-1])
         print(f'\n----------- {symbol} CCI Signal Analysis ( 4 hour ) --------------')
         pprint(df_4h.iloc[-1])
-        print(f'\n----------- {symbol} CCI Signal Analysis ( 1 day ) --------------')
+        print(f'\n----------- {symbol} CCI Signal Analysis ( 1 day and 7 day ) --------------')
         pprint(df_1d.iloc[-1])
 
 
@@ -492,6 +500,9 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
 
         curr = df.iloc[-1]['in_uptrend']
 
+        global is_supertrend_up
+        is_supertrend_up[symbol] = curr
+
         global supertrend_sell_decision
         supertrend_sell_decision[symbol] = curr and (current_cci_30m[symbol] > 100)
 
@@ -518,12 +529,12 @@ def market_sell_coin(exchange, symbol, amount, price):
     exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
+    pb_ratio = 0.0
     if is_supertrend_up[symbol]:
         pb_ratio = abs(random.gauss(0.025, 0.01))
-        pb_price = round(price * (1 - pb_ratio), 1)
     else:
         pb_ratio = abs(random.gauss(0.04, 0.02))
-        pb_price = round(price * (1 - pb_ratio), 1)
+    pb_price = round(price * (1 - pb_ratio), 1)
     return pb_price
 
 def pullback_order(exchange, symbol, price, amount):
@@ -535,9 +546,9 @@ def pullback_order(exchange, symbol, price, amount):
         if free_KRW < pb_amount :
             return
 
-        order_amount = round(pb_amount/pb_price, 5)
+        order_amount = round(pb_amount/pb_price, 2)
         exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = pb_price)
-        save_data(symbol,"pullback", "buy", pb_price, order_amount) 
+        save_data(symbol,"pullback", "buy", pb_price, order_amount)
         log_order(symbol, "Pullback buy", pb_price, pb_amount )
 
     except Exception as e:
@@ -768,16 +779,6 @@ def monitor_balance(exchange):
 
     except Exception as e:
         print("Exception : ", str(e))
-
-def monitor_momentum_signal(symbol: str):
-    print("\n---------------- xrp stoch rsi (1d) signal -----------------")
-
-    column_name= ["Symbol", "STOCHRSI buy", "STOCHRSI sell" ]
-    orders = pd.DataFrame(columns = column_name)
-    s = symbol
-    orders[0] = [s, xrp_stochrsi_buy_decision[s], xrp_stochrsi_sell_decision[s]]
-    pprint(orders)
-
 
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')

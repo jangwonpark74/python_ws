@@ -15,68 +15,33 @@ from pprint import pprint
 from pytz import timezone
 from datetime import datetime
 
-# Decision for orders 
+mfi_high_threshold = 80.0
+current_mfi = defaultdict(float)
+mfi_weight  = defaultdict(float)
+mfi_sell_amount = 5000000
 mfi_sell_decision = defaultdict(bool)
+
+current_cci = defaultdict(float)
+cci_low_threshold = -120.0
+cci_high_threshold = 140.0
+cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
+cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
 
+stochrsi_low_threshold = 25.0
+stochrsi_high_threshold = 83.0
+stochrsi_buy_amount  = 3000000
 stochrsi_buy_decision = defaultdict(bool)
 stochrsi_sell_decision = defaultdict(bool)
 
-# momentum strategy based on stochrsi(1d)
-momentum_buy_decision = defaultdict(bool)
-momentum_sell_decision = defaultdict(bool)
-
+is_supertrend_up = defaultdict(bool)
+supertrend_sell_amount = 2000000
 supertrend_sell_decision = defaultdict(bool)
+supertrend_buy_amount  = 2000000
 supertrend_buy_decision = defaultdict(bool)
 
-# mfi momentum (30m)
-mfi_momentum_30m = defaultdict(bool)
-
-# dual momentum decision
-dualmomentum_sell_decision = defaultdict(bool)
-dualmomentum_buy_decision = defaultdict(bool)
-
-# supertrend 
-is_supertrend_up = defaultdict(bool)
-
-# Current CCI 
-current_cci = defaultdict(float)
-current_mfi = defaultdict(float)
-
-# 30m_cci
-current_cci_30m = defaultdict(float)
-
-# MFI(14), 4 hour based weight control
-mfi_weight = defaultdict(float)
-
-# Order amount
-# MFI amount will be multiplied by MFI weight
-mfi_sell_amount = 5000000
-mfi_buy_amount  = 3000000
-cci_sell_amount = 40000000
-cci_buy_amount  = 40000000
-stochrsi_buy_amount  = 3000000
-
-# supertrend order amount 
-supertrend_sell_amount = 2000000
-supertrend_buy_amount  = 2000000
-
-# dualmomentum order amount 
-dualmomentum_sell_amount = 2000000
-dualmomentum_buy_amount = 2000000
-
-# Threshold for each trading strategy
-cci_low_threshold = -120.0
-cci_high_threshold = 140.0
-mfi_high_threshold = 80.0
-stochrsi_low_threshold = 25.0
-stochrsi_high_threshold = 83.0
-
-# Pullback stratey 
 pullback_portion = 0.5
-
-pd.set_option('display.max_rows', None)
 
 def write_to_csv(row_dict):
     """
@@ -212,9 +177,6 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
         mfi_30m = df_30m['mfi_30m'].iloc[-1]
 
-        global mfi_momentum_30m 
-        mfi_momentum_30m[symbol] = (mfi_30m > 50)
-
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
@@ -236,18 +198,12 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
         df_1d['mfi_1d'] = round(ta.mfi(df_1d['high'], df_1d['low'], df_1d['close'], df_1d['volume'], length=14), 1)
-        df_1d['mfi_7d_ma'] = df_1d['mfi_1d'].rolling(window=7).mean()
+        df_1d['mfi_14d_ma'] = df_1d['mfi_1d'].rolling(window=14).mean()
 
         mfi_1d = df_1d['mfi_1d'].iloc[-1]
-        mfi_7d = df_1d['mfi_7d_ma'].iloc[-1]
+        mfi_14d = df_1d['mfi_14d_ma'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d + mfi_7d)/6.0
-
-        global current_mfi
-        current_mfi[symbol] = mfi
-
-        global mfi_weight
-        mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d + mfi_14d)/6.0
 
         print(f'\n----------- {symbol} MFI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
@@ -267,6 +223,12 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         # update data for execution of order
         global mfi_sell_decision
         mfi_sell_decision[symbol] = (mfi*cci_factor) > mfi_high_threshold
+
+        global current_mfi
+        current_mfi[symbol] = mfi
+
+        global mfi_weight
+        mfi_weight[symbol] = round(abs(mfi - 50)/20.0, 1)
 
     except Exception as e:
         logging.info("Exception in analyze_mfi_signal ", str(e))
@@ -290,9 +252,6 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
-        global current_cci_30m
-        current_cci_30m[symbol] = cci_30m
-
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
@@ -314,12 +273,12 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
         df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=14), 1)
-        df_1d['cci_7d_ma'] = df_1d['cci_1d'].rolling(window=7).mean()
+        df_1d['cci_14d_ma'] = df_1d['cci_1d'].rolling(window=14).mean()
 
         cci_1d = df_1d['cci_1d'].iloc[-1]
-        cci_7d = df_1d['cci_7d_ma'].iloc[-1] 
+        cci_14d = df_1d['cci_14d_ma'].iloc[-1]
 
-        cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d + cci_7d)/6.0
+        cci = (cci_5m + cci_30m + cci_1h + cci_4h + cci_1d + cci_14d)/6.0
 
         global current_cci
         current_cci[symbol] = cci
@@ -328,7 +287,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         cci_sell_decision[symbol] = (cci > cci_high_threshold)
 
         global cci_buy_decision
-        cci_buy_decision[symbol] = (cci < cci_low_threshold ) 
+        cci_buy_decision[symbol] = (cci < cci_low_threshold )
 
         print(f'\n----------- {symbol} CCI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
@@ -344,122 +303,6 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))
-
-def analyze_candle_pattern(exchange, symbol: str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
-        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-
-        op = df['open'].astype(float)
-        hi = df['high'].astype(float)
-        lo = df['low'].astype(float)
-        cl = df['close'].astype(float)
-
-        df['MARUBOZU'] = talib.CDLMARUBOZU(op, hi, lo, cl)
-        df['3STARSINSOUTH'] = talib.CDL3STARSINSOUTH(op, hi, lo, cl)
-        df['3OUTSIDE'] = talib.CDL3OUTSIDE(op,hi, lo, cl)
-        df['3WHITESOLDIERS'] = talib.CDL3WHITESOLDIERS(op, hi, lo, cl)
-        df['BREAKAWAY'] = talib.CDLBREAKAWAY(op, hi, lo, cl)
-        df['EVENINGSTAR'] = talib.CDLEVENINGSTAR(op, hi, lo, cl)
-        df['HAMMER'] = talib.CDLHAMMER(op, hi, lo, cl)
-        df['HARAMICROSS'] = talib.CDLHARAMICROSS(op, hi, lo, cl)
-        df['INVERTEDHAMMER'] = talib.CDLINVERTEDHAMMER(op, hi, lo, cl)
-        df['MATCHINGLOW'] = talib.CDLMATCHINGLOW(op, hi, lo, cl)
-        df['MORNINGDOJISTAR'] = talib.CDLMORNINGDOJISTAR(op, hi, lo, cl)
-        df['RICKSHAWMAN'] = talib.CDLRICKSHAWMAN(op, hi, lo, cl)
-        df['RISEFALL3METHODS'] = talib.CDLRISEFALL3METHODS(op, hi, lo, cl)
-        df['SEPARATINGLINES'] = talib.CDLSEPARATINGLINES(op, hi, lo, cl)
-        df['UNIQUE3RIVER'] = talib.CDLUNIQUE3RIVER(op, hi, lo, cl)
-        df['THRUSTING'] = talib.CDLTHRUSTING(op, hi, lo, cl)
-        df['XSIDEGAP3METHODS'] = talib.CDLXSIDEGAP3METHODS(op, hi, lo, cl)
-
-        pprint(df.iloc[-1])
-
-    except Exception as e:
-        logging.info("Exception in analyze_candle_pattern : ", str(e))
-
-# ChatGPT recommendation for price momentum calculation
-def calculate_price_momentum(price: pd.Series, method='ema', period=20) -> pd.Series:
-    if method == 'ema':
-        return price.pct_change().ewm(span=period, adjust=False).mean()
-    elif method == 'roc':
-        return ((price - price.shift(period)) / price.shift(period)) * 100
-    elif method == 'rsi':
-        delta = price.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
-    elif method == 'momentum':
-        return price - price.shift(period)
-    elif method == 'macd':
-        short_ema = price.ewm(span=12, adjust=False).mean()
-        long_ema = price.ewm(span=26, adjust=False).mean()
-        macd = short_ema - long_ema
-        signal_line = macd.ewm(span=9, adjust=False).mean()
-        return macd - signal_line
-    elif method == 'stochastic':
-        high_rolling = price.rolling(window=14).max()
-        low_rolling = price.rolling(window=14).min()
-        stoch_k = 100 * (price - low_rolling) / (high_rolling - low_rolling)
-        return stoch_k.rolling(window=3).mean()
-    elif method == 'volatility_adjusted':
-        returns = price.pct_change()
-        volatility = returns.rolling(window=period).std()
-        return (price - price.shift(period)) / volatility
-    else:
-        raise ValueError("Unknown method")
-
-def calculate_trend_momentum(price: pd.Series, short_window: int = 12, long_window: int = 26, signal_window: int = 9) -> pd.Series:
-    short_ema = price.ewm(span=short_window, adjust=False).mean()
-    long_ema = price.ewm(span=long_window, adjust=False).mean()
-    macd = short_ema - long_ema
-    signal_line = macd.ewm(span=signal_window, adjust=False).mean()
-    macd_histogram = macd - signal_line
-
-    trend_momentum = (macd_histogram > 0).astype(int)
-    return trend_momentum
-
-def analyze_dualmomentum_signal(exchange, symbol: str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='4h')
-        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-
-        price = df['close'].astype(float)
-        df['price_momentum'] = calculate_price_momentum(price, method='momentum', period=20)
-        df['trend_momentum'] = calculate_trend_momentum(price)
-
-        df['combined_momentum'] = df['price_momentum'] * df['trend_momentum']
-
-        # Calcuate current momentum 
-        current_momentum = df['combined_momentum'].iloc[-1]
-        previous_momentum = df['combined_momentum'].iloc[-2]
-
-        buy = current_momentum > previous_momentum
-        sell = current_momentum < previous_momentum
-
-        global dualmomentum_buy_decision
-        global dualmomentum_sell_decision
-
-        df['dualmomentum_buy'] = buy
-        df['dualmomentum_sell'] = sell
-        df['current_momentum'] = current_momentum
-        df['previous_momentum'] = previous_momentum
-
-        dualmomentum_buy_decision[symbol] = buy 
-        dualmomentum_sell_decision[symbol] = sell
-
-        print(f'\n----------- {symbol} Dual Momentum Analysis ( 4h ) --------------')
-        pprint(df.iloc[-1])
-
-
-    except Exception as e:
-        logging.info("Exception in analyze_candle_pattern : ", str(e))
-
 
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
@@ -498,16 +341,16 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         print('\n----------- Analyze supertrend(30m) --------------')
         pprint(df.iloc[-1])
 
-        curr = df.iloc[-1]['in_uptrend']
+        current_supertrend = df.iloc[-1]['in_uptrend']
 
         global is_supertrend_up
-        is_supertrend_up[symbol] = curr
+        is_supertrend_up[symbol] = current_supertrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = curr and (current_cci_30m[symbol] > 100)
+        supertrend_sell_decision[symbol] = current_supertrend and (current_cci[symbol] > 100)
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] =  (not curr) and (current_cci_30m[symbol] < -100)
+        supertrend_buy_decision[symbol] =  (not current_supertrend) and (current_cci[symbol] < -100)
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -666,43 +509,6 @@ def supertrend_buy_coin(exchange,symbol: str)->None:
     except Exception as e:
         logging.info("Exception : ", str(e))
 
-def dualmomentum_sell_coin(exchange, symbol: str):
-    try:
-        orderbook = exchange.fetch_order_book(symbol)
-        price     = orderbook['bids'][0][0]
-        amount    = dualmomentum_sell_amount
-
-        market_sell_coin(exchange, symbol, price, amount)
-        save_data(symbol,"Dual Momentum", "sell", price, amount) 
-        log_order(symbol, "Dual Momentum sell", price, amount)
-
-        pullback_order(exchange, symbol, price, amount)
-        show_orderbook(orderbook)
-
-    except Exception as e:
-        logging.info("Exception : ", str(e))
-
-
-def dualmomentum_buy_coin(exchange,symbol: str)->None:
-    try:
-        orderbook = exchange.fetch_order_book(symbol)
-        price     = orderbook['bids'][0][0]
-        amount    = dualmomentum_buy_amount
-
-        free_KRW = exchange.fetchBalance()['KRW']['free']
-
-        if free_KRW < amount:
-            return
-
-        market_buy_coin(exchange, symbol, amount)
-        save_data(symbol,"Dual Momentum", "buy", price, amount)
-
-        logging.info(f"Dual Momentum buy order placed for {symbol} at price: {price}, amount = {amount}")
-        show_orderbook(orderbook)
-
-    except Exception as e:
-        logging.info("Exception : ", str(e))
-
 def execute_mfi_sell(exchange, symbol: str)->None:
     sell = mfi_sell_decision[symbol]
 
@@ -738,19 +544,6 @@ def execute_supertrend_buy(exchange, symbol: str):
 
     if sell:
         supertrend_buy_coin(exchange, symbol)
-
-def execute_dualmomentum_sell(exchange, symbol: str):
-    sell = dualmomentum_sell_decision[symbol]
-
-    if sell:
-        dualmomentum_sell_coin(exchange, symbol)
-
-def execute_dualmomentum_buy(exchange, symbol: str):
-    sell = dualmomentum_buy_decision[symbol]
-
-    if sell:
-        dualmomentum_buy_coin(exchange, symbol)
-
 
 def monitor_signals(symbols : list[str]):
     print("\n---------------- buy/sell order summary -----------------")
@@ -811,7 +604,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_momentum_signal, exchange, doge)
-    schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
@@ -819,15 +611,12 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
-    schedule.every(4).hours.do(execute_dualmomentum_sell, exchange, doge)
-    schedule.every(4).hours.do(execute_dualmomentum_buy, exchange, doge)
 
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_momentum_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_dualmomentum_signal, exchange, xrp)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
@@ -835,13 +624,10 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, xrp)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, xrp)
-    schedule.every(4).hours.do(execute_dualmomentum_sell, exchange, xrp)
-    schedule.every(4).hours.do(execute_dualmomentum_buy, exchange, xrp)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
-    schedule.every(30).seconds.do(analyze_candle_pattern, exchange, doge)
 
     while True:
         schedule.run_pending()

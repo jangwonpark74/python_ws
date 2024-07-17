@@ -311,13 +311,13 @@ def market_sell_coin(exchange, symbol, amount, price):
     exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    pb_ratio = 0.0
+    r = 0.0
     if is_uptrend[symbol]:
-        pb_ratio = abs(random.gauss(0.025, 0.01))
+        r = abs(random.gauss(0.025, 0.01))
     else:
-        pb_ratio = abs(random.gauss(0.04, 0.02))
-    pb_price = round(price * (1 - pb_ratio), 1)
-    return pb_price
+        r = abs(random.gauss(0.04, 0.025))
+
+    return round(price * (1 - r), 1)
 
 def pullback_order(exchange, symbol, price, amount):
     try:

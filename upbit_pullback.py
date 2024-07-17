@@ -33,9 +33,8 @@ stochrsi_low_threshold = 25.0
 stochrsi_high_threshold = 83.0
 stochrsi_buy_amount  = 3000000
 stochrsi_buy_decision = defaultdict(bool)
-stochrsi_sell_decision = defaultdict(bool)
 
-is_supertrend_up = defaultdict(bool)
+is_uptrend = defaultdict(bool)
 supertrend_sell_amount = 2000000
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 2000000
@@ -44,37 +43,21 @@ supertrend_buy_decision = defaultdict(bool)
 pullback_portion = 0.5
 
 def write_to_csv(row_dict):
-    """
-    Adds a row to a CSV file. If the file does not exist, it creates one with the specified column names.
-
-    :param file_path: Path to the CSV file.
-    :param column_names: List of column names for the CSV.
-    :param row_dict: A dictionary representing the row to be added, with keys as column names.
-    """
-
     file_path = 'trading.csv'
     column_names = ['datetime', 'symbol', 'indicator', 'order_type', 'price', 'amount']
     file_exists = os.path.isfile(file_path)
     with open(file_path, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=column_names)
 
-        # If the file doesn't exist or is empty, write the header
         if not file_exists or os.path.getsize(file_path) == 0:
             writer.writeheader()
 
-        # Write the row data
         writer.writerow(row_dict)
 
-def current_time():
-    KST = timezone('Asia/Seoul')
-    datetime_now = datetime.now()
-    localtime_now = datetime_now.astimezone(KST) 
-    return localtime_now
-
 def save_data(symbol, indicator, order_type, price, amount):
-    datetime_now = current_time()
+    KST = timezone('Asia/Seoul')
     csv_row = {
-             'datetime': datetime_now,
+             'datetime': datetime.now().astimezone(KST),
              'symbol': symbol,
              'indicator': indicator,
              'order_type': order_type,
@@ -86,10 +69,6 @@ def save_data(symbol, indicator, order_type, price, amount):
 def show_orderbook(orderbook):
     print("\n------------Getting order book -----------")
     pprint(orderbook)
-
-def calc_mfi_amount(symbol):
-    amount = mfi_sell_amount * mfi_weight[symbol]
-    return amount
 
 def analyze_stochrsi_signal(exchange, symbol: str)->None:
     try:
@@ -109,19 +88,21 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
 
         # Stoch rsi cross-over strategy
         buy  = (current_stochrsi_k > current_stochrsi_d) and (current_stochrsi_k < stochrsi_low_threshold)
-        sell = (current_stochrsi_k < current_stochrsi_d) and (current_stochrsi_k > stochrsi_high_threshold)
 
         global stochrsi_buy_decision
         stochrsi_buy_decision[symbol] = buy
 
         df['stochrsi_buy']  = buy
-        df['stochrsi_sell'] = sell
 
         print(f'\n----------- {symbol} STOCHRSI Signal Analysis (30 minutes) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:
         logging.info("Exception in analyze_stochrsi_signal: ", str(e))
+
+def calc_mfi_amount(symbol):
+    amount = mfi_sell_amount * mfi_weight[symbol]
+    return amount
 
 def analyze_mfi_signal(exchange, symbol: str)->None:
     try:
@@ -265,7 +246,6 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         print(f'\n----------- {symbol} CCI Signal Analysis ( 1 day and 7 day ) --------------')
         pprint(df_1d.iloc[-1])
 
-
     except Exception as e:
         logging.info("Exception in analyze_cci_signal : ", str(e))
 
@@ -285,37 +265,37 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         df['upperband'] = (df['high'] + df['low'])/2 + (multiplier * df['atr'])
         df['lowerband'] = (df['high'] + df['low'])/2 - (multiplier * df['atr'])
 
-        df['in_uptrend'] = False
+        df['uptrend'] = False
 
         for i in range(1, len(df.index)):
             p = i - 1
 
             if df['close'][i] > df['upperband'][p]:
-                df.loc[i, 'in_uptrend'] = True
+                df.loc[i, 'uptrend'] = True
             elif df['close'][i] < df['lowerband'][p]:
-                df.loc[i, 'in_uptrend'] = False
+                df.loc[i, 'uptrend'] = False
             else:
-                df.loc[i, 'in_uptrend'] = df.loc[p,'in_uptrend']
+                df.loc[i, 'uptrend'] = df.loc[p,'uptrend']
 
-                if df['in_uptrend'][i] and (df['lowerband'][i] < df['lowerband'][p]) :
+                if df['uptrend'][i] and (df['lowerband'][i] < df['lowerband'][p]) :
                     df.loc[i, 'lowerband'] = df.loc[p, 'lowerband']
 
-                if (not df['in_uptrend'][i] ) and (df['upperband'][i] > df['upperband'][p]):
+                if (not df['uptrend'][i] ) and (df['upperband'][i] > df['upperband'][p]):
                     df.loc[i, 'upperband'] = df.loc[p, 'upperband']
 
         print('\n----------- Analyze supertrend(30m) --------------')
         pprint(df.iloc[-1])
 
-        current_supertrend = df.iloc[-1]['in_uptrend']
+        uptrend = df.iloc[-1]['uptrend']
 
-        global is_supertrend_up
-        is_supertrend_up[symbol] = current_supertrend
+        global is_uptrend
+        is_uptrend[symbol] = uptrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = current_supertrend and (current_cci[symbol] > 100)
+        supertrend_sell_decision[symbol] = uptrend and (current_cci[symbol] > 100)
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] =  (not current_supertrend) and (current_cci[symbol] < -100)
+        supertrend_buy_decision[symbol] =  (not uptrend) and (current_cci[symbol] < -100)
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -338,7 +318,7 @@ def market_sell_coin(exchange, symbol, amount, price):
 
 def calc_pullback_price(symbol, price) -> float:
     pb_ratio = 0.0
-    if is_supertrend_up[symbol]:
+    if is_uptrend[symbol]:
         pb_ratio = abs(random.gauss(0.025, 0.01))
     else:
         pb_ratio = abs(random.gauss(0.04, 0.02))

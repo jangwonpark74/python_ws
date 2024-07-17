@@ -123,41 +123,6 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_stochrsi_signal: ", str(e))
 
-def analyze_momentum_signal(exchange, symbol:str)->None:
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
-        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
-        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
-        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-
-        stochrsi = ta.stochrsi(df['close'], length=14, fastk_period=3, fastd_period=3, append=True)
-
-        df['stochrsi_k'] = stochrsi['STOCHRSIk_14_14_3_3']
-        df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
-
-        # Get the latest value
-        stochrsi_k = df['stochrsi_k'].iloc[-1]
-        stochrsi_d = df['stochrsi_d'].iloc[-1]
-
-        # Stoch rsi cross-over strategy
-
-        buy  = (stochrsi_k > stochrsi_d)
-        sell = (stochrsi_k < stochrsi_d)
-
-        global momentum_buy_decision
-        global momentum_sell_decision
-        momentum_buy_decision[symbol] = buy
-        momentum_sell_decision[symbol] = sell
-
-        df['momentum_buy']  = buy
-        df['momentum_sell'] = sell
-
-        print(f'\n----------- {symbol} Momentum Signal Analysis (1 day) --------------')
-        pprint(df.iloc[-1])
-
-    except Exception as e:
-        logging.info("Exception in analyze_momentum_signal: ", str(e))
-
 def analyze_mfi_signal(exchange, symbol: str)->None:
     try:
         ohlcv_5m = exchange.fetch_ohlcv(symbol, timeframe='5m')
@@ -603,7 +568,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
-    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, doge)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
@@ -616,7 +580,6 @@ if __name__=='__main__':
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_momentum_signal, exchange, xrp)
 
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)

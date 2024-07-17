@@ -83,11 +83,11 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
         df['stochrsi_d'] = stochrsi['STOCHRSId_14_14_3_3']
 
         # Get the latest value
-        current_stochrsi_k = df['stochrsi_k'].iloc[-1]
-        current_stochrsi_d = df['stochrsi_d'].iloc[-1]
+        stochrsi_k = df['stochrsi_k'].iloc[-1]
+        stochrsi_d = df['stochrsi_d'].iloc[-1]
 
         # Stoch rsi cross-over strategy
-        buy  = (current_stochrsi_k > current_stochrsi_d) and (current_stochrsi_k < stochrsi_low_threshold)
+        buy  = (stochrsi_k > stochrsi_d) and (stochrsi_k < stochrsi_low_threshold)
 
         global stochrsi_buy_decision
         stochrsi_buy_decision[symbol] = buy
@@ -113,7 +113,6 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         df['mfi_5m'] = round(ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=14), 1)
 
         mfi_5m = df['mfi_5m'].iloc[-1]
-        # store information for dispaly
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -149,8 +148,6 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         mfi_1d = df_1d['mfi_1d'].iloc[-1]
         mfi_14d = df_1d['mfi_14d_ma'].iloc[-1]
 
-        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d + mfi_14d)/6.0
-
         print(f'\n----------- {symbol} MFI Signal Analysis ( 5 minutes) --------------')
         pprint(df.iloc[-1])
         print(f'\n----------- {symbol} MFI Signal Analysis (30 minutes) --------------')
@@ -162,13 +159,10 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
         print(f'\n----------- {symbol} MFI Signal Analysis ( 1 day and 7 day) --------------')
         pprint(df_1d.iloc[-1])
 
-        # current cci 
-        cci = current_cci[symbol]
-        cci_factor = cci / 140.0
+        mfi = (mfi_5m + mfi_30m + mfi_1h + mfi_4h + mfi_1d + mfi_14d)/6.0
 
-        # update data for execution of order
         global mfi_sell_decision
-        mfi_sell_decision[symbol] = (mfi*cci_factor) > mfi_high_threshold
+        mfi_sell_decision[symbol] = (mfi*current_cci[symbol]/140.0) > mfi_high_threshold
 
         global current_mfi
         current_mfi[symbol] = mfi

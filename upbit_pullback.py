@@ -28,6 +28,9 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
+cci_scalping_amount   = 1000000
+cci_scalping_buy_decision = defaultdict(bool)
+cci_scalping_sell_decision = defaultdict(bool)
 
 stochrsi_low_threshold = 25.0
 stochrsi_high_threshold = 83.0
@@ -43,6 +46,7 @@ supertrend_buy_decision = defaultdict(bool)
 pullback_portion = 0.5
 
 def write_to_csv(row_dict):
+
     file_path = 'trading.csv'
     column_names = ['datetime', 'symbol', 'indicator', 'order_type', 'price', 'amount']
     file_exists = os.path.isfile(file_path)
@@ -55,7 +59,9 @@ def write_to_csv(row_dict):
         writer.writerow(row_dict)
 
 def save_data(symbol, indicator, order_type, price, amount):
+
     KST = timezone('Asia/Seoul')
+
     csv_row = {
              'datetime': datetime.now().astimezone(KST),
              'symbol': symbol,
@@ -64,6 +70,7 @@ def save_data(symbol, indicator, order_type, price, amount):
              'price' : round(price, 1),
              'amount': round(amount, 0),
     }
+
     write_to_csv( csv_row )
 
 def show_orderbook(orderbook):
@@ -99,10 +106,6 @@ def analyze_stochrsi_signal(exchange, symbol: str)->None:
 
     except Exception as e:
         logging.info("Exception in analyze_stochrsi_signal: ", str(e))
-
-def calc_mfi_amount(symbol):
-    amount = mfi_sell_amount * mfi_weight[symbol]
-    return amount
 
 def analyze_mfi_signal(exchange, symbol: str)->None:
     try:
@@ -173,6 +176,31 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
     except Exception as e:
         logging.info("Exception in analyze_mfi_signal ", str(e))
 
+def analyze_cci_scalping_signal(exchange, symbol: str)->None:
+    try:
+        ohlcv_5m = exchange.fetch_ohlcv(symbol, timeframe='3m')
+        df = pd.DataFrame(ohlcv_5m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['cci_3m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
+
+        cci_3m = df['cci_3m'].iloc[-1]
+        buy  = cci_3m < -130
+        sell = cci_3m > 140
+
+        global cci_scalping_buy_decision
+        global cci_scalping_sell_decision
+
+        cci_scalping_buy_decision[symbol] = buy
+        cci_scalping_sell_decision[symbol] = sell
+
+        print(f'\n----------- {symbol} CCI Scalping Signal Analysis ( 3 minutes) --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        logging.info("Exception in analyze_cci_signal : ", str(e))
+
+
 def analyze_cci_signal(exchange, symbol: str)->None:
     try:
         ohlcv_5m = exchange.fetch_ohlcv(symbol, timeframe='5m')
@@ -182,7 +210,6 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
-        # store information for dispaly
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -336,6 +363,10 @@ def pullback_order(exchange, symbol, price, amount):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+def calc_mfi_amount(symbol):
+    amount = mfi_sell_amount * mfi_weight[symbol]
+    return amount
+
 def mfi_sell_coin(exchange, symbol: str):
     try:
 
@@ -353,6 +384,43 @@ def mfi_sell_coin(exchange, symbol: str):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+def cci_scalping_sell_coin(exchange, symbol: str):
+    try:
+
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['asks'][0][0]
+        amount    = cci_scalping_amount 
+
+        market_sell_coin(exchange, symbol, amount, price)
+        save_data(symbol,'CCI scalping', 'sell', price, amount) 
+        pullback_order(exchange, symbol, price, amount)
+        log_order(symbol, "CCI scalping sell", price, amount)
+
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
+def cci_scalping_buy_coin(exchange,symbol: str)->None:
+    try:
+        orderbook = exchange.fetch_order_book(symbol)
+        price     = orderbook['bids'][0][0] 
+        amount    = cci_scalping_amount
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+
+        if free_KRW < amount:
+            return
+
+        market_buy_coin(exchange, symbol, amount, price)
+        save_data(symbol,"cci scalping", "buy", price, amount) 
+        log_order(symbol, "CCI scalping, 3m, Buy", price, amount)
+
+        show_orderbook(orderbook)
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
 def cci_sell_coin(exchange, symbol: str):
     try:
 
@@ -361,7 +429,7 @@ def cci_sell_coin(exchange, symbol: str):
         amount    = cci_sell_amount 
 
         market_sell_coin(exchange, symbol, amount, price)
-        save_data(symbol,'mfi', 'sell', price, amount) 
+        save_data(symbol,'CCI', 'sell', price, amount) 
         pullback_order(exchange, symbol, price, amount)
         log_order(symbol, "CCI average based sell", price, amount)
 
@@ -383,7 +451,7 @@ def cci_buy_coin(exchange,symbol: str)->None:
             return
 
         market_buy_coin(exchange, symbol, amount, price)
-        save_data(symbol,"cci", "buy", price, amount) 
+        save_data(symbol,"CCI", "buy", price, amount) 
         log_order(symbol, "CCI, 5m, Buy", price, amount)
 
         show_orderbook(orderbook)
@@ -427,7 +495,6 @@ def supertrend_sell_coin(exchange, symbol: str):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
-
 def supertrend_buy_coin(exchange,symbol: str)->None:
     try:
         orderbook = exchange.fetch_order_book(symbol)
@@ -453,6 +520,18 @@ def execute_mfi_sell(exchange, symbol: str)->None:
 
     if sell:
        mfi_sell_coin(exchange, symbol)
+
+def execute_cci_scalping_sell(exchange, symbol: str)->None:
+    sell = cci_scalping_sell_decision[symbol]
+
+    if sell:
+        cci_scalping_sell_coin(exchange, symbol)
+
+def execute_cci_scalping_buy(exchange, symbol: str)->None:
+    buy = cci_scalping_buy_decision[symbol]
+
+    if buy:
+        cci_scalping_buy_coin(exchange, symbol)
 
 def execute_cci_sell(exchange, symbol: str)->None:
     sell = cci_sell_decision[symbol]
@@ -538,11 +617,14 @@ if __name__=='__main__':
     #defile list of symbols 
     symbols= [doge, xrp]
 
+    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, doge)
 
+    schedule.every(1).minutes.do(execute_cci_scalping_buy, exchange, doge)
+    schedule.every(1).minutes.do(execute_cci_scalping_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
@@ -550,11 +632,14 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
 
+    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
 
+    schedule.every(1).minutes.do(execute_cci_scalping_buy, exchange, xrp)
+    schedule.every(1).minutes.do(execute_cci_scalping_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
@@ -568,4 +653,4 @@ if __name__=='__main__':
 
     while True:
         schedule.run_pending()
-        time.sleep(0.01)
+        time.sleep(0.005)

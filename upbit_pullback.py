@@ -61,7 +61,7 @@ def write_to_csv(row_dict, file_name):
 def write_to_volume_csv(row_dict, file_name):
 
     file_path = file_name
-    column_names = ['datetime', 'symbol', 'volume', 'free']
+    column_names = ['datetime', 'volume']
     file_exists = os.path.isfile(file_path)
     with open(file_path, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=column_names)
@@ -88,17 +88,17 @@ def save_data(symbol, indicator, order_type, price, amount):
     trading_log_file = 'trading.csv'
     write_to_csv( csv_row , trading_log_file)
 
-def save_volume(symbol, data):
+def save_volume(currency, volume):
 
     KST = timezone('Asia/Seoul')
 
-    csv_volume_row = {
-             'datetime': datetime.now().astimezone(KST),
-             'volume': float(data['DOGE']),
-             'free': float(data['KRW']),
+    volume_row = {
+        'datetime': datetime.now().astimezone(KST),
+        'volume': float(volume),
     }
-    volume_log_file = 'volume.csv'
-    write_to_volume_csv( csv_volume_row , volume_log_file)
+
+    volume_log_file = f'volume_{currency}.csv'
+    write_to_volume_csv( volume_row , volume_log_file)
 
 def show_orderbook(orderbook):
     print("\n------------Getting order book -----------")
@@ -646,7 +646,12 @@ def monitor_volume(exchange):
     try:
         balance = exchange.fetchBalance()
         info_balances = extract_balances(balance)
-        #save_volume(info_balances) 
+
+        print("\n---------------- monitor volume  -----------------")
+        for currency, amount in info_balances.items():
+            if currency != 'KRW':
+                pprint( f'currency = {currency}, amount = {amount}')
+                save_volume(currency, amount)
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -710,7 +715,7 @@ if __name__=='__main__':
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
-    schedule.every(30).seconds.do(monitor_volume, exchange)
+    schedule.every(5).minutes.do(monitor_volume, exchange)
 
     while True:
         schedule.run_pending()

@@ -28,7 +28,7 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 1000000
+cci_scalping_amount   = 600000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 
@@ -45,9 +45,9 @@ supertrend_buy_decision = defaultdict(bool)
 
 pullback_portion = 0.5
 
-def write_to_csv(row_dict):
+def write_to_csv(row_dict, file_name):
 
-    file_path = 'trading.csv'
+    file_path = file_name
     column_names = ['datetime', 'symbol', 'indicator', 'order_type', 'price', 'amount']
     file_exists = os.path.isfile(file_path)
     with open(file_path, mode='a', newline='') as file:
@@ -57,6 +57,20 @@ def write_to_csv(row_dict):
             writer.writeheader()
 
         writer.writerow(row_dict)
+
+def write_to_volume_csv(row_dict, file_name):
+
+    file_path = file_name
+    column_names = ['datetime', 'symbol', 'volume', 'free']
+    file_exists = os.path.isfile(file_path)
+    with open(file_path, mode='a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=column_names)
+
+        if not file_exists or os.path.getsize(file_path) == 0:
+            writer.writeheader()
+
+        writer.writerow(row_dict)
+
 
 def save_data(symbol, indicator, order_type, price, amount):
 
@@ -71,7 +85,20 @@ def save_data(symbol, indicator, order_type, price, amount):
              'amount': round(amount, 0),
     }
 
-    write_to_csv( csv_row )
+    trading_log_file = 'trading.csv'
+    write_to_csv( csv_row , trading_log_file)
+
+def save_volume(symbol, data):
+
+    KST = timezone('Asia/Seoul')
+
+    csv_volume_row = {
+             'datetime': datetime.now().astimezone(KST),
+             'volume': float(data['DOGE']),
+             'free': float(data['KRW']),
+    }
+    volume_log_file = 'volume.csv'
+    write_to_volume_csv( csv_volume_row , volume_log_file)
 
 def show_orderbook(orderbook):
     print("\n------------Getting order book -----------")
@@ -185,7 +212,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         df['cci_3m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
         cci_3m = df['cci_3m'].iloc[-1]
-        buy  = cci_3m < -130
+        buy  = cci_3m < -120
         sell = cci_3m > 140
 
         global cci_scalping_buy_decision
@@ -328,7 +355,7 @@ def log_cancel(symbol, order_type, price):
     logging.info(f"[ {symbol} ] {order_type} cancel for low balance at price= {price}")
 
 def market_buy_coin(exchange, symbol, amount):
-    amount_krw = amount 
+    amount_krw = amount
     exchange.options['createMarketBuyOrderRequiresPrice']=False
     exchange.create_market_buy_order(symbol = symbol, amount = amount_krw)
 
@@ -363,6 +390,24 @@ def pullback_order(exchange, symbol, price, amount):
     except Exception as e:
         logging.info("Exception : ", str(e))
 
+def scalping_pullback_order(exchange, symbol, price, amount):
+    try:
+        pb_price = calc_pullback_price(symbol, price)
+        pb_amount = amount * 0.6
+
+        free_KRW = exchange.fetchBalance()['KRW']['free']
+        if free_KRW < pb_amount :
+            return
+
+        order_amount = round(pb_amount/pb_price, 2)
+        exchange.create_limit_buy_order(symbol = symbol, amount = order_amount, price = pb_price)
+        save_data(symbol,"pullback", "buy", pb_price, order_amount)
+        log_order(symbol, "Pullback buy", pb_price, pb_amount )
+
+    except Exception as e:
+        logging.info("Exception : ", str(e))
+
+
 def calc_mfi_amount(symbol):
     amount = mfi_sell_amount * mfi_weight[symbol]
     return amount
@@ -389,11 +434,11 @@ def cci_scalping_sell_coin(exchange, symbol: str):
 
         orderbook = exchange.fetch_order_book(symbol)
         price     = orderbook['asks'][0][0]
-        amount    = cci_scalping_amount 
+        amount    = cci_scalping_amount
 
         market_sell_coin(exchange, symbol, amount, price)
+        scalping_pullback_order(exchange, symbol, price, amount)
         save_data(symbol,'CCI scalping', 'sell', price, amount) 
-        pullback_order(exchange, symbol, price, amount)
         log_order(symbol, "CCI scalping sell", price, amount)
 
         show_orderbook(orderbook)
@@ -412,7 +457,7 @@ def cci_scalping_buy_coin(exchange,symbol: str)->None:
         if free_KRW < amount:
             return
 
-        market_buy_coin(exchange, symbol, amount, price)
+        market_buy_coin(exchange, symbol, amount)
         save_data(symbol,"cci scalping", "buy", price, amount) 
         log_order(symbol, "CCI scalping, 3m, Buy", price, amount)
 
@@ -450,7 +495,7 @@ def cci_buy_coin(exchange,symbol: str)->None:
         if free_KRW < amount:
             return
 
-        market_buy_coin(exchange, symbol, amount, price)
+        market_buy_coin(exchange, symbol, amount)
         save_data(symbol,"CCI", "buy", price, amount) 
         log_order(symbol, "CCI, 5m, Buy", price, amount)
 
@@ -582,11 +627,26 @@ def monitor_signals(symbols : list[str]):
     print("\n---------------- average cci and mfi values  -----------------")
     pprint(cci_mfi_analysis)
 
+def extract_balances(balance):
+    return balance.get('total', {}) 
+
 def monitor_balance(exchange):
     try:
         print("\n---------------- fetch balance result  -----------------")
         balance = exchange.fetchBalance()
         pprint(balance)
+        print("\n---------------- extract balance result  -----------------")
+        info_balances = extract_balances(balance) 
+        pprint(info_balances)
+
+    except Exception as e:
+        print("Exception : ", str(e))
+
+def monitor_volume(exchange):
+    try:
+        balance = exchange.fetchBalance()
+        info_balances = extract_balances(balance)
+        #save_volume(info_balances) 
 
     except Exception as e:
         print("Exception : ", str(e))
@@ -650,6 +710,7 @@ if __name__=='__main__':
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
+    schedule.every(30).seconds.do(monitor_volume, exchange)
 
     while True:
         schedule.run_pending()

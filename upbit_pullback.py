@@ -23,12 +23,12 @@ mfi_sell_decision = defaultdict(bool)
 
 current_cci = defaultdict(float)
 cci_low_threshold = -120.0
-cci_high_threshold = 140.0
+cci_high_threshold = 150.0
 cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 600000
+cci_scalping_amount   = 8000000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 

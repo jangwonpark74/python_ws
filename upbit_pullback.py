@@ -22,7 +22,7 @@ mfi_sell_amount = 5000000
 mfi_sell_decision = defaultdict(bool)
 
 current_cci = defaultdict(float)
-cci_low_threshold = -120.0
+cci_low_threshold = -140.0
 cci_high_threshold = 140.0
 cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
@@ -43,7 +43,7 @@ supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 4000000
 supertrend_buy_decision = defaultdict(bool)
 
-pullback_portion = 0.5
+pullback_portion = 0.7
 
 def write_to_csv(row_dict, file_name):
 
@@ -212,8 +212,17 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         df['cci_3m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
         cci_3m = df['cci_3m'].iloc[-1]
-        buy  = cci_3m  < -130
-        sell = cci_3m > 140
+
+        ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
+        df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
+        df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
+        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=14), 1)
+
+        cci_4h = df_4h['cci_4h'].iloc[-1]
+
+        buy  = (cci_3m  < -130) and (cci_4h < -100)
+        sell = (cci_3m > 140) and (cci_4h > 100) 
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision
@@ -365,12 +374,7 @@ def market_sell_coin(exchange, symbol, amount, price):
     exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = 0.0
-    if is_uptrend[symbol]:
-        r = abs(random.gauss(0.025, 0.01))
-    else:
-        r = abs(random.gauss(0.04, 0.025))
-
+    r = abs(random.gauss(0.05, 0.15))
     return round(price * (1 - r), 1)
 
 def pullback_order(exchange, symbol, price, amount):

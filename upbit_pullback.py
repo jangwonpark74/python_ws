@@ -28,7 +28,7 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 700000
+cci_scalping_amount   = 1000000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 
@@ -221,8 +221,8 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        buy  = (cci_3m  < -130) and (cci_4h < -100)
-        sell = (cci_3m > 140) and (cci_4h > 100) 
+        buy  = (cci_3m  < -120) and (cci_4h < -100)
+        sell = (cci_3m > 150) and (cci_4h > 100)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision

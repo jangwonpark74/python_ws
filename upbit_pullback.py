@@ -309,7 +309,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 def analyze_supertrend_signal(exchange, symbol: str)->None:
     try:
         # upto two weeks analyze supertrend 
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
@@ -340,7 +340,7 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
                 if (not df['uptrend'][i] ) and (df['upperband'][i] > df['upperband'][p]):
                     df.loc[i, 'upperband'] = df.loc[p, 'upperband']
 
-        print('\n----------- Analyze supertrend(30m) --------------')
+        print('\n----------- Analyze supertrend(1 hour) --------------')
         pprint(df.iloc[-1])
 
         uptrend = df.iloc[-1]['uptrend']

@@ -43,7 +43,7 @@ supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 4000000
 supertrend_buy_decision = defaultdict(bool)
 
-pullback_portion = 0.7
+pullback_portion = 0.6
 
 def write_to_csv(row_dict, file_name):
 
@@ -374,7 +374,7 @@ def market_sell_coin(exchange, symbol, amount, price):
     exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(random.gauss(0.05, 0.15))
+    r = abs(random.gauss(0.05, 0.2))
     return round(price * (1 - r), 1)
 
 def pullback_order(exchange, symbol, price, amount):
@@ -687,7 +687,7 @@ if __name__=='__main__':
     sol = "SOL/KRW"
 
     #defile list of symbols 
-    symbols= [doge, xrp]
+    symbols= [doge, xrp, eth]
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, doge)
@@ -748,21 +748,21 @@ if __name__=='__main__':
 #    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, sol)
 #    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, sol)
 #    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, sol)
-#
-#    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, eth)
-#    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, eth)
-#    schedule.every(30).seconds.do(analyze_cci_signal, exchange, eth)
-#    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, eth)
-#    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, eth)
-#
-#    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, eth)
-#    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, eth)
-#    schedule.every(5).minutes.do(execute_mfi_sell, exchange, eth)
-#    schedule.every(5).minutes.do(execute_cci_buy, exchange, eth)
-#    schedule.every(5).minutes.do(execute_cci_sell, exchange, eth)
-#    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, eth)
-#    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, eth)
-#    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, eth)
+
+    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, eth)
+    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, eth)
+    schedule.every(30).seconds.do(analyze_cci_signal, exchange, eth)
+    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, eth)
+    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, eth)
+
+    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, eth)
+    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, eth)
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, eth)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, eth)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, eth)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, eth)
+    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, eth)
+    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, eth)
 
 
     # monitoring every 30 seconds

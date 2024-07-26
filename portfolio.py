@@ -51,14 +51,15 @@ def analyze_covariance(exchange, currencies)->None:
         print("\n-------------- annual convariance -----------")
         annual_cov = daily_cov*365
 
-        pprint(annual_cov) 
+        pprint(annual_cov)
 
         portfolio_return =[]
         portfolio_risk = []
         portfolio_weights = []
+        num_assets = len(currencies)
 
         for _ in range(20000):
-            weights = np.random.random(len(currencies))
+            weights = np.random.random(num_assets)
             weights /= np.sum(weights)
 
             returns = np.dot(weights, annual_return)
@@ -68,19 +69,28 @@ def analyze_covariance(exchange, currencies)->None:
             portfolio_risk.append(risk)
             portfolio_weights.append(weights)
 
-        
         portfolio = {'Returns': portfolio_return, 'Risk': portfolio_risk}
-        for i, s in enumerate(currencies):
-            portfolio[s] = [weight[i] for weight in portfolio_weights]
+        for i, symbol in enumerate(currencies):
+            portfolio[symbol] = [weight[i] for weight in portfolio_weights]
 
         df = pd.DataFrame(portfolio)
-        df - df[['Returns', 'Risk'] + [s for s in currencies]]
+        df = df[['Returns', 'Risk'] + currencies]
 
-        pprint(df)
+        pprint(df.head())
 
         df.plot.scatter(x = 'Risk', y ='Returns', figsize=(9, 8), grid=True)
         plt.title("Efficient Frontier")
         plt.show()
+
+        filtered_df = df[df['Returns'] >= 1.2]
+        pprint(filtered_df.head())
+        filtered_df.plot.scatter(x = 'Risk', y ='Returns', figsize=(9, 8), grid=True)
+        plt.title("Filtered Efficient Frontier")
+        plt.show()
+
+        print("\n-------------- average portfolio with more than 20% returns -----------")
+        average_df = filtered_df[currencies].mean()
+        pprint(average_df)
 
     except Exception as e:
         print("Exception: ", str(e))
@@ -92,6 +102,6 @@ class Currency:
 
 if __name__=='__main__':
     exchange = init_upbit()
-    portfolio = ["DOGE/KRW", "BTC/KRW", "XRP/KRW", "ETH/KRW", "SOL/KRW"] 
-    analyze_covariance(exchange, portfolio)
+    currencies = ["DOGE/KRW", "BTC/KRW", "XRP/KRW", "ETH/KRW", "SOL/KRW"] 
+    analyze_covariance(exchange, currencies)
 

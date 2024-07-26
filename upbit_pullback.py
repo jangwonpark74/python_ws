@@ -78,8 +78,10 @@ def save_data(symbol, indicator, order_type, price, amount):
 
     KST = timezone('Asia/Seoul')
 
+    now = datetime.now().astimezone(KST)
+    now_sec = now.strftime("%Y-%m-%d %H:%M:%S")
     csv_row = {
-             'datetime': datetime.now().astimezone(KST),
+             'datetime': now_sec,
              'symbol': symbol,
              'indicator': indicator,
              'order_type': order_type,
@@ -93,10 +95,12 @@ def save_data(symbol, indicator, order_type, price, amount):
 def save_volume(currency, volume):
 
     KST = timezone('Asia/Seoul')
+    now = datetime.now().astimezone(KST)
+    now_sec = now.strftime("%Y-%m-%d %H:%M:%S")
 
     volume_row = {
-        'datetime': datetime.now().astimezone(KST),
-        'volume': float(volume),
+        'datetime': now_sec,
+        'volume': round(float(volume), 3),
     }
 
     volume_log_file = f'volume_{currency}.csv'
@@ -236,7 +240,29 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         pprint(df.iloc[-1])
 
     except Exception as e:
-        logging.info("Exception in analyze_cci_signal : ", str(e))
+        logging.info("Exception in analyze_cci_signal : %s", str(e))
+
+
+def analyze_daily_pct(exchange, symbol: str)->None:
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
+        df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+
+        # Calculate daily percentage change
+        df['1d_pct_change'] = df['close'].pct_change() * 100
+
+        # Calculate consecutive day percentage change up to 10 days
+        for i in range(2, 10):
+            df[f'{i}d_pct_change'] = df['close'].pct_change(periods=i) * 100
+
+        print(f'\n----------- last 10 day consecutive --------------')
+        pprint(df.iloc[-1])
+
+    except Exception as e:
+        logging.info("Exception in analyze_daily_pct : %s", str(e))
+
 
 
 def analyze_cci_signal(exchange, symbol: str)->None:
@@ -378,7 +404,7 @@ def market_sell_coin(exchange, symbol, amount, price):
         exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(random.gauss(0.05, 0.2))
+    r = abs(random.gauss(0.05, 0.12))
     return round(price * (1 - r), 1)
 
 def pullback_order(exchange, symbol, price, amount):
@@ -688,15 +714,15 @@ if __name__=='__main__':
 
     #define doge symbol 
     doge = "DOGE/KRW"
-    xrp = "XRP/KRW"
     btc = "BTC/KRW"
     eth = "ETH/KRW"
     sol = "SOL/KRW"
 
     #defile list of symbols 
-    symbols= [doge, xrp, eth]
+    symbols= [doge, sol, eth, btc]
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, doge)
+    schedule.every(10).seconds.do(analyze_daily_pct, exchange, doge)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, doge)
@@ -711,56 +737,44 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
 
-    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_cci_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, xrp)
-    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, btc)
+    schedule.every(10).seconds.do(analyze_daily_pct, exchange, btc)
+    schedule.every(10).seconds.do(analyze_mfi_signal, exchange, btc)
+    schedule.every(10).seconds.do(analyze_cci_signal, exchange, btc)
+    schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, btc)
+    schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, btc)
 
-    schedule.every(1).minutes.do(execute_cci_scalping_buy, exchange, xrp)
-    schedule.every(1).minutes.do(execute_cci_scalping_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
-    schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
-    schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
-    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
-    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, xrp)
-    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, xrp)
+    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, btc)
+    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
+    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, btc)
+    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, btc)
 
-#    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, btc)
-#    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, btc)
-#    schedule.every(30).seconds.do(analyze_cci_signal, exchange, btc)
-#    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, btc)
-#    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, btc)
+    schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, sol)
+    schedule.every(10).seconds.do(analyze_daily_pct, exchange, sol)
+    schedule.every(10).seconds.do(analyze_mfi_signal, exchange, sol)
+    schedule.every(10).seconds.do(analyze_cci_signal, exchange, sol)
+    schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, sol)
+    schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, sol)
 
-#    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, btc)
-#    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, btc)
-#    schedule.every(5).minutes.do(execute_mfi_sell, exchange, btc)
-#    schedule.every(5).minutes.do(execute_cci_buy, exchange, btc)
-#    schedule.every(5).minutes.do(execute_cci_sell, exchange, btc)
-#    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, btc)
-#    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, btc)
-#    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, btc)
+    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, sol)
+    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, sol)
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, sol)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, sol)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, sol)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, sol)
+    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, sol)
+    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, sol)
 
-#    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, sol)
-#    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, sol)
-#    schedule.every(30).seconds.do(analyze_cci_signal, exchange, sol)
-#    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, sol)
-#    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, sol)
-
-#    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, sol)
-#    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, sol)
-#    schedule.every(5).minutes.do(execute_mfi_sell, exchange, sol)
-#    schedule.every(5).minutes.do(execute_cci_buy, exchange, sol)
-#    schedule.every(5).minutes.do(execute_cci_sell, exchange, sol)
-#    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, sol)
-#    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, sol)
-#    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, sol)
-
-    schedule.every(5).seconds.do(analyze_cci_scalping_signal, exchange, eth)
-    schedule.every(30).seconds.do(analyze_mfi_signal, exchange, eth)
-    schedule.every(30).seconds.do(analyze_cci_signal, exchange, eth)
-    schedule.every(30).seconds.do(analyze_stochrsi_signal, exchange, eth)
-    schedule.every(30).seconds.do(analyze_supertrend_signal, exchange, eth)
+    schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, eth)
+    schedule.every(10).seconds.do(analyze_daily_pct, exchange, eth)
+    schedule.every(10).seconds.do(analyze_mfi_signal, exchange, eth)
+    schedule.every(10).seconds.do(analyze_cci_signal, exchange, eth)
+    schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, eth)
+    schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, eth)
 
     schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, eth)
     schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, eth)

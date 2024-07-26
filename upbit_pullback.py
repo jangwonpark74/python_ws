@@ -43,6 +43,8 @@ supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 4000000
 supertrend_buy_decision = defaultdict(bool)
 
+my_balance = defaultdict(float)
+
 pullback_portion = 0.6
 
 def write_to_csv(row_dict, file_name):
@@ -371,7 +373,9 @@ def market_buy_coin(exchange, symbol, amount):
 def market_sell_coin(exchange, symbol, amount, price):
     exchange.options['createMarketBuyOrderRequiresPrice']=False
     sell_amount = round(amount/price, 3)
-    exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
+
+    if my_balance[symbol] >= sell_amount:
+        exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
     r = abs(random.gauss(0.05, 0.2))
@@ -632,7 +636,7 @@ def monitor_signals(symbols : list[str]):
     pprint(cci_mfi_analysis)
 
 def extract_balances(balance):
-    return balance.get('total', {}) 
+    return balance.get('total', {})
 
 def monitor_balance(exchange):
     try:
@@ -654,7 +658,10 @@ def monitor_volume(exchange):
         print("\n---------------- monitor volume  -----------------")
         for currency, amount in info_balances.items():
             if currency != 'KRW':
-                pprint( f'currency = {currency}, amount = {amount}')
+                symbol = currency +"/KRW"
+                global my_balance
+                my_balance[symbol] = amount
+                pprint( f'currency = {currency}, amount = {amount}, symbol={symbol}, my_balance[{symbol}]={my_balance[symbol]}')
                 save_volume(currency, amount)
 
     except Exception as e:
@@ -768,7 +775,7 @@ if __name__=='__main__':
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
-    schedule.every(5).minutes.do(monitor_volume, exchange)
+    schedule.every(30).seconds.do(monitor_volume, exchange)
 
     while True:
         schedule.run_pending()

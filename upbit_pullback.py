@@ -264,7 +264,7 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         global daily_pct_map
         daily_pct_map[symbol] = x
 
-        three_day_down = (x['1d_pct'] <0 ) and (x['2d_pct'] <x['1d_pct']) and (x['3d_pct'] < x['2d_pct'])
+        three_day_down = (x['1d_pct'] <0 ) and (x['3d_pct'] <x['1d_pct'])
         five_day_down = three_day_down and (x['5d_pct'] < x['3d_pct'])
         seven_day_down = five_day_down and (x['7d_pct'] < x['5d_pct'])
 

@@ -49,6 +49,7 @@ pullback_portion = 0.6
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
+daily_up_state = defaultdict(lambda: defaultdict(bool))
 
 def write_to_csv(row_dict, file_name):
 
@@ -264,21 +265,36 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         global daily_pct_map
         daily_pct_map[symbol] = x
 
-        three_day_down = (x['1d_pct'] <0 ) and (x['3d_pct'] <x['1d_pct'])
+        three_day_down = (x['1d_pct'] < -0.01 ) and (x['3d_pct'] < x['1d_pct'])
         five_day_down = three_day_down and (x['5d_pct'] < x['3d_pct'])
         seven_day_down = five_day_down and (x['7d_pct'] < x['5d_pct'])
+        nine_day_down = seven_day_down and (x['9d_pct'] < x['7d_pct'])
+
+        three_day_up = (x['1d_pct'] > 0.01 ) and (x['3d_pct'] > x['1d_pct'])
+        five_day_up = three_day_up and (x['5d_pct'] > x['3d_pct'])
+        seven_day_up = five_day_up and (x['7d_pct'] > x['5d_pct'])
+        nine_day_up = seven_day_up and (x['9d_pct'] > x['7d_pct']) 
 
         global daily_down_state
-        daily_down_state[symbol]['three_day_down'] = three_day_down
-        daily_down_state[symbol]['five_day_down'] = five_day_down
-        daily_down_state[symbol]['seven_day_down'] = seven_day_down 
+        daily_down_state[symbol]['3d_down'] = three_day_down
+        daily_down_state[symbol]['5d_down'] = five_day_down
+        daily_down_state[symbol]['7d_down'] = seven_day_down
+        daily_down_state[symbol]['9d_down'] = nine_day_down
+
+        global daily_up_state
+        daily_up_state[symbol]['3d_up'] = three_day_up
+        daily_up_state[symbol]['5d_up'] = five_day_up
+        daily_up_state[symbol]['7d_up'] = seven_day_up
+        daily_up_state[symbol]['9d_up'] = nine_day_up
 
         print(f'\n-----------{symbol} consecutive down state --------------')
         pprint(daily_down_state[symbol])
 
+        print(f'\n-----------{symbol} consecutive up state --------------')
+        pprint(daily_up_state[symbol])
+
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))
-
 
 
 def analyze_cci_signal(exchange, symbol: str)->None:

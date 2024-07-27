@@ -47,6 +47,8 @@ my_balance = defaultdict(float)
 
 pullback_portion = 0.6
 
+daily_pct_map = defaultdict(lambda: defaultdict(float))
+
 def write_to_csv(row_dict, file_name):
 
     file_path = file_name
@@ -250,16 +252,15 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
-        # Calculate daily percentage change
-        df['1d_pct_change'] = df['close'].pct_change() * 100
-
         # Calculate consecutive day percentage change up to 10 days
-        for i in range(2, 10):
+        for i in range(1, 11):
             df[f'{i}d_pct_change'] = df['close'].pct_change(periods=i) * 100
-
         print(f'\n----------- last 10 day consecutive --------------')
         pprint(df.iloc[-1])
 
+        global daily_pct_map
+        df_daily_pct = df.iloc[-1].drop('volume')
+        daily_pct_map[symbol] = df_daily_pct 
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))
 
@@ -693,6 +694,11 @@ def monitor_volume(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
+def monitor_daily_pct():
+    print("\n---------------- monitor daily pct  -----------------")
+    pprint(daily_pct_map)
+
+
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
     print(f'Initialized CCXT with version : {ccxt.__version__}')
@@ -785,11 +791,11 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, eth)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, eth)
 
-
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(monitor_volume, exchange)
+    schedule.every(30).seconds.do(monitor_daily_pct)
 
     while True:
         schedule.run_pending()

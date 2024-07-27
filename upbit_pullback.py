@@ -48,6 +48,7 @@ my_balance = defaultdict(float)
 pullback_portion = 0.6
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
+daily_down_state = defaultdict(lambda: defaultdict(bool))
 
 def write_to_csv(row_dict, file_name):
 
@@ -252,15 +253,28 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
 
+
         # Calculate consecutive day percentage change up to 10 days
         for i in range(1, 11):
-            df[f'{i}d_pct_change'] = df['close'].pct_change(periods=i) * 100
+            df[f'{i}d_pct'] = df['close'].pct_change(periods=i) * 100
         print(f'\n-----------{symbol} last 10 day consecutive --------------')
-        df_daily_pct = df.iloc[-1].drop("volume")
-        pprint(df_daily_pct)
+        x = df.iloc[-1].drop("volume")
+        pprint(x)
 
         global daily_pct_map
-        daily_pct_map[symbol] = df_daily_pct 
+        daily_pct_map[symbol] = x
+
+        three_day_down = (x['1d_pct'] <0 ) and (x['2d_pct'] <x['1d_pct']) and (x['3d_pct'] < x['2d_pct'])
+        five_day_down = three_day_down and (x['5d_pct'] < x['3d_pct'])
+        seven_day_down = five_day_down and (x['7d_pct'] < x['5d_pct'])
+
+        global daily_down_state
+        daily_down_state[symbol]['three_day_down'] = three_day_down
+        daily_down_state[symbol]['five_day_down'] = five_day_down
+        daily_down_state[symbol]['seven_day_down'] = seven_day_down 
+
+        print(f'\n-----------{symbol} consecutive down state --------------')
+        pprint(daily_down_state[symbol])
 
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))

@@ -255,12 +255,13 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         # Calculate consecutive day percentage change up to 10 days
         for i in range(1, 11):
             df[f'{i}d_pct_change'] = df['close'].pct_change(periods=i) * 100
-        print(f'\n----------- last 10 day consecutive --------------')
-        pprint(df.iloc[-1])
+        print(f'\n-----------{symbol} last 10 day consecutive --------------')
+        df_daily_pct = df.iloc[-1].drop("volume")
+        pprint(df_daily_pct)
 
         global daily_pct_map
-        df_daily_pct = df.iloc[-1].drop('volume')
         daily_pct_map[symbol] = df_daily_pct 
+
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))
 

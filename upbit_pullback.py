@@ -239,7 +239,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        cci = (cci_3m + cci_30m)/2
+        cci = (cci_3m + cci_30m*0.8)/2
 
         buy  = (cci < -130) and (cci_4h < -80)
         sell = (cci > 130) and (cci_4h > 80)
@@ -250,7 +250,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         cci_scalping_buy_decision[symbol] = buy
         cci_scalping_sell_decision[symbol] = sell
 
-        print(f'\n----------- {symbol} CCI Scalping Signal Analysis ( 3m and 60m average) --------------')
+        print(f'\n----------- {symbol} CCI Scalping Signal Analysis ( 3m and 30m average) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

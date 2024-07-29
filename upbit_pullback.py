@@ -45,7 +45,7 @@ supertrend_buy_decision = defaultdict(bool)
 
 my_balance = defaultdict(float)
 
-pullback_portion = 0.6
+pullback_portion = 0.7
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
@@ -446,7 +446,7 @@ def market_sell_coin(exchange, symbol, amount, price):
         exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(random.gauss(0.05, 0.12))
+    r = abs(random.gauss(0.035, 0.015))
     return round(price * (1 - r), 1)
 
 def pullback_order(exchange, symbol, price, amount):

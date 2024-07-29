@@ -447,7 +447,7 @@ def market_sell_coin(exchange, symbol, amount, price):
         exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(np.random.lognormal(0.035, 0.01) - 1)
+    r = abs(np.random.lognormal(0.03, 0.01) - 1)
     return round(price * (1-r), 1)
 
 def pullback_order(exchange, symbol, price, amount):

@@ -8,6 +8,7 @@ import schedule
 import talib
 import time
 import random
+import numpy as np 
 
 from conf import key
 from collections import defaultdict
@@ -446,8 +447,8 @@ def market_sell_coin(exchange, symbol, amount, price):
         exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(random.gauss(0.035, 0.015))
-    return round(price * (1 - r), 1)
+    r = abs(np.random.lognormal(0.035, 0.01) - 1)
+    return round(price * (1-r), 1)
 
 def pullback_order(exchange, symbol, price, amount):
     try:

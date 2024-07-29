@@ -28,7 +28,7 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 1000000
+cci_scalping_amount   = 600000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 
@@ -223,6 +223,14 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_3m = df['cci_3m'].iloc[-1]
 
+        ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
+        df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
+        df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
+        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=14), 1)
+
+        cci_30m= df_30m['cci_30m'].iloc[-1]
+
         ohlcv_4h = exchange.fetch_ohlcv(symbol, timeframe='4h')
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
@@ -231,8 +239,10 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        buy  = (cci_3m  < -120) and (cci_4h < -100)
-        sell = (cci_3m > 150) and (cci_4h > 100)
+        cci = (cci_3m + cci_30m)/2
+
+        buy  = (cci < -130) and (cci_4h < -80)
+        sell = (cci > 130) and (cci_4h > 80)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision
@@ -240,7 +250,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         cci_scalping_buy_decision[symbol] = buy
         cci_scalping_sell_decision[symbol] = sell
 
-        print(f'\n----------- {symbol} CCI Scalping Signal Analysis ( 3 minutes) --------------')
+        print(f'\n----------- {symbol} CCI Scalping Signal Analysis ( 3m and 60m average) --------------')
         pprint(df.iloc[-1])
 
     except Exception as e:

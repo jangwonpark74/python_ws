@@ -240,7 +240,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        cci = (cci_3m + cci_30m*0.8)/2.0
+        cci = (cci_3m + cci_30m*0.9)/2.0
 
         buy  = (cci < -130) and (cci_4h < -70)
         sell = (cci > 130) and (cci_4h > 70)

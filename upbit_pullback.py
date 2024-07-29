@@ -239,10 +239,10 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        cci = (cci_3m + cci_30m*0.8)/2
+        cci = (cci_3m + cci_30m*0.8)/2.0
 
-        buy  = (cci < -130) and (cci_4h < -80)
-        sell = (cci > 130) and (cci_4h > 80)
+        buy  = (cci < -130) and (cci_4h < -70)
+        sell = (cci > 130) and (cci_4h > 70)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision

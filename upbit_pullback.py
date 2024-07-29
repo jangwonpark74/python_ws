@@ -28,7 +28,7 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 600000
+cci_scalping_amount   = 1000000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 

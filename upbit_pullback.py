@@ -269,6 +269,7 @@ def analyze_daily_pct(exchange, symbol: str)->None:
         # Calculate consecutive day percentage change up to 10 days
         for i in range(1, 11):
             df[f'{i}d_pct'] = df['close'].pct_change(periods=i) * 100
+            df['sum'] = df['sum'] + df[f'{i}d_pct']
         print(f'\n-----------{symbol} last 10 day consecutive --------------')
         x = df.iloc[-1].drop("volume")
         pprint(x)
@@ -765,9 +766,10 @@ if __name__=='__main__':
     btc = "BTC/KRW"
     eth = "ETH/KRW"
     sol = "SOL/KRW"
+    xrp = "XRP/KRW"
 
     #defile list of symbols 
-    symbols= [doge, sol, eth, btc]
+    symbols= [doge, xrp, sol, eth, btc]
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_daily_pct, exchange, doge)
@@ -784,6 +786,22 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
+
+    schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_daily_pct, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_mfi_signal, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_cci_signal, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, xrp)
+
+    schedule.every(3).minutes.do(execute_cci_scalping_buy, exchange, xrp)
+    schedule.every(3).minutes.do(execute_cci_scalping_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_mfi_sell, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_buy, exchange, xrp)
+    schedule.every(5).minutes.do(execute_cci_sell, exchange, xrp)
+    schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, xrp)
+    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, xrp)
+    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, xrp)
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, btc)
     schedule.every(10).seconds.do(analyze_daily_pct, exchange, btc)

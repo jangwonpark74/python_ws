@@ -52,6 +52,12 @@ daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
 daily_up_state = defaultdict(lambda: defaultdict(bool))
 
+
+# Todo List (2024/07/31)
+# 1. Supertrend based Dual Momentum Strategy implementation 
+# 2. Average CCI/MFI based recommendation implementation 
+# 3. Integrating portfolio managment 
+
 def write_to_csv(row_dict, file_name):
 
     file_path = file_name

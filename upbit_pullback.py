@@ -39,14 +39,14 @@ stochrsi_buy_amount  = 4000000
 stochrsi_buy_decision = defaultdict(bool)
 
 is_uptrend = defaultdict(bool)
-supertrend_sell_amount = 4000000
+supertrend_sell_amount = 1000000
 supertrend_sell_decision = defaultdict(bool)
-supertrend_buy_amount  = 4000000
+supertrend_buy_amount  = 1000000
 supertrend_buy_decision = defaultdict(bool)
 
 my_balance = defaultdict(float)
 
-pullback_portion = 0.7
+pullback_portion = 0.5
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
@@ -246,10 +246,18 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
-        cci = (cci_3m + cci_30m*0.9)/2.0
+        buy  = False
+        sell = False
 
-        buy  = (cci < -130) and (cci_4h < -120)
-        sell = (cci > 130) and (cci_4h > 120)
+        if is_uptrend[symbol] :
+            cci = (cci_3m + cci_30m*0.9)/2.0
+
+            buy  = (cci < -130) and (cci_4h < -120)
+            sell = (cci > 130) and (cci_4h > 120)
+        else:
+            cci = cci_3m
+            buy = (cci  < -130)
+            sell = (cci > 130)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision
@@ -427,10 +435,10 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         is_uptrend[symbol] = uptrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = uptrend and (current_cci[symbol] > 100)
+        supertrend_sell_decision[symbol] = not uptrend 
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] =  (not uptrend) and (current_cci[symbol] < -100)
+        supertrend_buy_decision[symbol] =  uptrend
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -447,14 +455,29 @@ def market_buy_coin(exchange, symbol, amount):
     exchange.create_market_buy_order(symbol = symbol, amount = amount_krw)
 
 def market_sell_coin(exchange, symbol, amount, price):
-    exchange.options['createMarketBuyOrderRequiresPrice']=False
-    sell_amount = round(amount/price, 3)
+    # Fetch market details to get precision and limits
+    market = exchange.market(symbol)
+    precision = market['precision']['amount']
+    min_order_amount = market['limits']['amount']['min']
 
-    if my_balance[symbol] >= sell_amount:
-        exchange.create_market_sell_order(symbol=symbol, amount = sell_amount )
+    # Calculate sell amount and adjust to meet precision and minimum order amount
+    sell_amount = round(amount / price, precision)
+    
+    if sell_amount < min_order_amount:
+        print(f"Sell amount {sell_amount} is less than the minimum order amount {min_order_amount}.")
+        return
+
+    if my_balance[symbol.split('/')[0]] >= sell_amount:
+        try:
+            exchange.create_market_sell_order(symbol=symbol, amount=sell_amount)
+            print(f"Placed sell order for {sell_amount} {symbol.split('/')[0]}")
+        except Exception as e:
+            print(f"An error occurred while placing the order: {e}")
+    else:
+        print(f"Not enough balance to place the order. Available balance: {my_balance[symbol.split('/')[0]]}")
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(np.random.lognormal(0.03, 0.015) - 1)
+    r = abs(np.random.lognormal(0.025, 0.015) - 1)
     return round(price * (1-r), 1)
 
 def pullback_order(exchange, symbol, price, amount):
@@ -555,7 +578,7 @@ def cci_sell_coin(exchange, symbol: str):
 
         orderbook = exchange.fetch_order_book(symbol)
         price     = orderbook['asks'][0][0]
-        amount    = cci_sell_amount 
+        amount    = cci_sell_amount
 
         market_sell_coin(exchange, symbol, amount, price)
         save_data(symbol,'CCI', 'sell', price, amount) 
@@ -611,11 +634,11 @@ def stochrsi_buy_coin(exchange,symbol: str)->None:
 def supertrend_sell_coin(exchange, symbol: str):
     try:
         orderbook = exchange.fetch_order_book(symbol)
-        price     = orderbook['bids'][0][0]
+        price     = orderbook['asks'][0][0]
         amount    = supertrend_sell_amount
 
         market_sell_coin(exchange, symbol, price, amount)
-        save_data(symbol,"supertrend", "sell", price, amount) 
+        save_data(symbol,"Supertrend", "sell", price, amount) 
         log_order(symbol, "Supertrend sell", price, amount)
 
         pullback_order(exchange, symbol, price, amount)

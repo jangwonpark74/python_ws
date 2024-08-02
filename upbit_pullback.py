@@ -23,6 +23,7 @@ mfi_sell_amount = 5000000
 mfi_sell_decision = defaultdict(bool)
 
 current_cci = defaultdict(float)
+supertrend_cci = defaultdict(float)
 cci_low_threshold = -140.0
 cci_high_threshold = 140.0
 cci_buy_amount   = 40000000
@@ -372,6 +373,9 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         global current_cci
         current_cci[symbol] = cci
 
+        global supertrend_cci
+        supertrend_cci[symbol] = cci_30m
+
         global cci_sell_decision
         cci_sell_decision[symbol] = (cci > cci_high_threshold)
 
@@ -435,10 +439,10 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         is_uptrend[symbol] = uptrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = not uptrend 
+        supertrend_sell_decision[symbol] = (not uptrend) and (supertrend_cci[symbol] > 0) 
 
         global supertrend_buy_decision
-        supertrend_buy_decision[symbol] =  uptrend
+        supertrend_buy_decision[symbol] =  uptrend 
 
     except Exception as e:
         logging.info("Exception in analyze_supertrend_signal: ", str(e))
@@ -457,24 +461,14 @@ def market_buy_coin(exchange, symbol, amount):
 def market_sell_coin(exchange, symbol, amount, price):
     # Fetch market details to get precision and limits
     market = exchange.market(symbol)
-    precision = market['precision']['amount']
-    min_order_amount = market['limits']['amount']['min']
 
     # Calculate sell amount and adjust to meet precision and minimum order amount
-    sell_amount = round(amount / price, precision)
-    
-    if sell_amount < min_order_amount:
-        print(f"Sell amount {sell_amount} is less than the minimum order amount {min_order_amount}.")
-        return
+    sell_amount = round(amount / price, 3)
 
-    if my_balance[symbol.split('/')[0]] >= sell_amount:
-        try:
-            exchange.create_market_sell_order(symbol=symbol, amount=sell_amount)
-            print(f"Placed sell order for {sell_amount} {symbol.split('/')[0]}")
-        except Exception as e:
+    try:
+        exchange.create_market_sell_order(symbol=symbol, amount=sell_amount)
+    except Exception as e:
             print(f"An error occurred while placing the order: {e}")
-    else:
-        print(f"Not enough balance to place the order. Available balance: {my_balance[symbol.split('/')[0]]}")
 
 def calc_pullback_price(symbol, price) -> float:
     r = abs(np.random.lognormal(0.025, 0.015) - 1)
@@ -813,9 +807,20 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(3).minutes.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(3).minutes.do(execute_supertrend_buy, exchange, doge)
 
+    # monitoring every 30 seconds
+    schedule.every(30).seconds.do(monitor_signals, symbols)
+    schedule.every(30).seconds.do(monitor_balance, exchange)
+    schedule.every(30).seconds.do(monitor_volume, exchange)
+    schedule.every(30).seconds.do(monitor_daily_pct)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(0.005)
+
+"""
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, xrp)
     schedule.every(10).seconds.do(analyze_daily_pct, exchange, xrp)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, xrp)
@@ -879,13 +884,5 @@ if __name__=='__main__':
     schedule.every(30).minutes.do(execute_stochrsi_buy, exchange, eth)
     schedule.every(30).minutes.do(execute_supertrend_sell, exchange, eth)
     schedule.every(30).minutes.do(execute_supertrend_buy, exchange, eth)
-
-    # monitoring every 30 seconds
-    schedule.every(30).seconds.do(monitor_signals, symbols)
-    schedule.every(30).seconds.do(monitor_balance, exchange)
-    schedule.every(30).seconds.do(monitor_volume, exchange)
-    schedule.every(30).seconds.do(monitor_daily_pct)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(0.005)
+"""
+  

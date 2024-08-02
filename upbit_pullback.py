@@ -223,13 +223,13 @@ def analyze_mfi_signal(exchange, symbol: str)->None:
 
 def analyze_cci_scalping_signal(exchange, symbol: str)->None:
     try:
-        ohlcv_3m = exchange.fetch_ohlcv(symbol, timeframe='3m')
-        df = pd.DataFrame(ohlcv_3m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
+        df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['cci_3m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
+        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
 
-        cci_3m = df['cci_3m'].iloc[-1]
+        cci_5m = df['cci_5m'].iloc[-1]
 
         ohlcv_30m = exchange.fetch_ohlcv(symbol, timeframe='30m')
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -251,12 +251,12 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         sell = False
 
         if is_uptrend[symbol] :
-            cci = (cci_3m + cci_30m*0.9)/2.0
+            cci = (cci_5m + cci_30m*0.9)/2.0
 
             buy  = (cci < -130) and (cci_4h < -120)
             sell = (cci > 130) and (cci_4h > 120)
         else:
-            cci = cci_3m
+            cci = cci_5m
             buy = (cci  < -130)
             sell = (cci > 130)
 
@@ -471,7 +471,7 @@ def market_sell_coin(exchange, symbol, amount, price):
             print(f"An error occurred while placing the order: {e}")
 
 def calc_pullback_price(symbol, price) -> float:
-    r = abs(np.random.lognormal(0.025, 0.015) - 1)
+    r = abs(np.random.lognormal(0.03, 0.015) - 1)
     return round(price * (1-r), 1)
 
 def pullback_order(exchange, symbol, price, amount):

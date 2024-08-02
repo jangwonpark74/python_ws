@@ -829,8 +829,8 @@ if __name__=='__main__':
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, eth)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, eth)
 
-    schedule.every(1).minutes.do(execute_cci_scalping_buy, exchange, doge)
-    schedule.every(1).minutes.do(execute_cci_scalping_sell, exchange, doge)
+    schedule.every(2).minutes.do(execute_cci_scalping_buy, exchange, doge)
+    schedule.every(2).minutes.do(execute_cci_scalping_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)

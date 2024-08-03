@@ -252,14 +252,14 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         sell = False
 
         if is_uptrend[symbol] :
-            cci = (cci_5m + cci_30m*0.9)/2.0
+            cci = (cci_5m + cci_30m)/2.0
 
             buy  = (cci < -130) and (cci_4h < -120)
             sell = (cci > 130) and (cci_4h > 120)
         else:
-            cci = (cci_5m + cci_30m*0.9)/2.0
-            buy = (cci  < -130)
-            sell = (cci > 130)
+            cci = (cci_5m + cci_30m)/2.0
+            buy = (cci  < -120)
+            sell = (cci > 120)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision
@@ -344,7 +344,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
         global is_downtrend_sell
-        is_downtrend_sell[symbol] = (cci_30m > 100)
+        is_downtrend_sell[symbol] = (cci_30m > 80)
 
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -443,7 +443,7 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         is_uptrend[symbol] = uptrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = (not uptrend) and is_downtrend_sell[symbol]
+        supertrend_sell_decision[symbol] = (not uptrend) and is_downtrend_sell[symbol] 
 
         global supertrend_buy_decision
         supertrend_buy_decision[symbol] =  uptrend 
@@ -831,14 +831,14 @@ if __name__=='__main__':
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, eth)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, eth)
 
-    schedule.every(2).minutes.do(execute_cci_scalping_buy, exchange, doge)
-    schedule.every(2).minutes.do(execute_cci_scalping_sell, exchange, doge)
+    schedule.every(1).minutes.do(execute_cci_scalping_buy, exchange, doge)
+    schedule.every(1).minutes.do(execute_cci_scalping_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(5).minutes.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(5).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

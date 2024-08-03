@@ -7,7 +7,6 @@ import pandas_ta as ta
 import schedule
 import talib
 import time
-import random
 import numpy as np 
 
 from conf import key
@@ -464,9 +463,7 @@ def market_buy_coin(exchange, symbol, amount):
     exchange.create_market_buy_order(symbol = symbol, amount = amount_krw)
 
 def market_sell_coin(exchange, symbol, amount, price):
-    # Fetch market details to get precision and limits
-    market = exchange.market(symbol)
-
+    
     # Calculate sell amount and adjust to meet precision and minimum order amount
     sell_amount = round(amount / price, 4)
 

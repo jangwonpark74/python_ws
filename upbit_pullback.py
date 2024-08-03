@@ -257,7 +257,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
             buy  = (cci < -130) and (cci_4h < -120)
             sell = (cci > 130) and (cci_4h > 120)
         else:
-            cci = cci_5m
+            cci = (cci_5m + cci_30m*0.9)/2.0
             buy = (cci  < -130)
             sell = (cci > 130)
 

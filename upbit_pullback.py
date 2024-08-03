@@ -48,7 +48,7 @@ supertrend_buy_decision = defaultdict(bool)
 
 my_balance = defaultdict(float)
 
-pullback_portion = 0.95 
+pullback_portion = 0.6 
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
@@ -837,8 +837,8 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(30).minutes.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(30).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(20).minutes.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(20).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

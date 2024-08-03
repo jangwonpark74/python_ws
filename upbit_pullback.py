@@ -345,7 +345,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
         global is_downtrend_sell
-        is_downtrend_sell[symbol] = (cci_30m > 70)
+        is_downtrend_sell[symbol] = (cci_30m > 100)
 
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
@@ -839,9 +839,9 @@ if __name__=='__main__':
     schedule.every(5).minutes.do(execute_mfi_sell, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_buy, exchange, doge)
     schedule.every(5).minutes.do(execute_cci_sell, exchange, doge)
-    schedule.every(20).minutes.do(execute_stochrsi_buy, exchange, doge)
-    schedule.every(20).minutes.do(execute_supertrend_sell, exchange, doge)
-    schedule.every(20).minutes.do(execute_supertrend_buy, exchange, doge)
+    schedule.every(5).minutes.do(execute_stochrsi_buy, exchange, doge)
+    schedule.every(5).minutes.do(execute_supertrend_sell, exchange, doge)
+    schedule.every(5).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
     schedule.every(30).seconds.do(monitor_signals, symbols)

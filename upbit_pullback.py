@@ -40,6 +40,8 @@ stochrsi_buy_amount  = 4000000
 stochrsi_buy_decision = defaultdict(bool)
 
 is_uptrend = defaultdict(bool)
+is_downtrend_sell = defaultdict(bool)
+
 supertrend_sell_amount = 1000000
 supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 1000000
@@ -47,7 +49,7 @@ supertrend_buy_decision = defaultdict(bool)
 
 my_balance = defaultdict(float)
 
-pullback_portion = 1.0
+pullback_portion = 0.95 
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
@@ -342,6 +344,9 @@ def analyze_cci_signal(exchange, symbol: str)->None:
 
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
+        global is_downtrend_sell
+        is_downtrend_sell[symbol] = (cci_30m > 70)
+
         ohlcv_1h = exchange.fetch_ohlcv(symbol, timeframe='1h')
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
@@ -439,7 +444,7 @@ def analyze_supertrend_signal(exchange, symbol: str)->None:
         is_uptrend[symbol] = uptrend
 
         global supertrend_sell_decision
-        supertrend_sell_decision[symbol] = (not uptrend) 
+        supertrend_sell_decision[symbol] = (not uptrend) and is_downtrend_sell[symbol]
 
         global supertrend_buy_decision
         supertrend_buy_decision[symbol] =  uptrend 

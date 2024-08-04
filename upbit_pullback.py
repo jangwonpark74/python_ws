@@ -29,7 +29,7 @@ cci_buy_amount   = 40000000
 cci_buy_decision = defaultdict(bool)
 cci_sell_amount  = 40000000
 cci_sell_decision = defaultdict(bool)
-cci_scalping_amount   = 3000000
+cci_scalping_amount   = 5000000
 cci_scalping_buy_decision = defaultdict(bool)
 cci_scalping_sell_decision = defaultdict(bool)
 
@@ -48,7 +48,7 @@ supertrend_buy_decision = defaultdict(bool)
 
 my_balance = defaultdict(float)
 
-pullback_portion = 0.6 
+pullback_portion = 0.9
 
 daily_pct_map = defaultdict(lambda: defaultdict(float))
 daily_down_state = defaultdict(lambda: defaultdict(bool))
@@ -228,7 +228,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
+        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=10), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
 
@@ -236,7 +236,7 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
         df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=14), 1)
+        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=10), 1)
 
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
@@ -244,22 +244,20 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
         df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=14), 1)
+        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=10), 1)
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
         buy  = False
         sell = False
+        cci = (cci_5m + cci_30m)/2.0
 
         if is_uptrend[symbol] :
-            cci = (cci_5m + cci_30m)/2.0
-
-            buy  = (cci < -130) and (cci_4h < -120)
-            sell = (cci > 130) and (cci_4h > 120)
+            buy  = (cci < -130) and (cci_4h < -130)
+            sell = (cci > 130) and (cci_4h > 130)
         else:
-            cci = (cci_5m + cci_30m)/2.0
-            buy = (cci  < -120)
-            sell = (cci > 120)
+            buy = (cci  < -130)
+            sell = (cci > 130)
 
         global cci_scalping_buy_decision
         global cci_scalping_sell_decision
@@ -331,7 +329,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df = pd.DataFrame(ohlcv_5m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
-        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=14), 1)
+        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=10), 1)
 
         cci_5m = df['cci_5m'].iloc[-1]
 
@@ -339,7 +337,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_30m = pd.DataFrame(ohlcv_30m, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_30m['datetime'] = pd.to_datetime(df_30m['datetime'], utc=True, unit='ms')
         df_30m['datetime'] = df_30m['datetime'].dt.tz_convert("Asia/Seoul")
-        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=14), 1)
+        df_30m['cci_30m']   = round(ta.cci(df_30m['high'], df_30m['low'], df_30m['close'], length=10), 1)
 
         cci_30m= df_30m['cci_30m'].iloc[-1]
 
@@ -350,7 +348,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1h = pd.DataFrame(ohlcv_1h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1h['datetime'] = pd.to_datetime(df_1h['datetime'], utc=True, unit='ms')
         df_1h['datetime'] = df_1h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1h['cci_1h']   = round(ta.cci(df_1h['high'], df_1h['low'], df_1h['close'], length=14), 1)
+        df_1h['cci_1h']   = round(ta.cci(df_1h['high'], df_1h['low'], df_1h['close'], length=10), 1)
 
         cci_1h = df_1h['cci_1h'].iloc[-1]
 
@@ -358,7 +356,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_4h = pd.DataFrame(ohlcv_4h, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_4h['datetime'] = pd.to_datetime(df_4h['datetime'], utc=True, unit='ms')
         df_4h['datetime'] = df_4h['datetime'].dt.tz_convert("Asia/Seoul")
-        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=14), 1)
+        df_4h['cci_4h']   = round(ta.cci(df_4h['high'], df_4h['low'], df_4h['close'], length=10), 1)
 
         cci_4h = df_4h['cci_4h'].iloc[-1]
 
@@ -366,7 +364,7 @@ def analyze_cci_signal(exchange, symbol: str)->None:
         df_1d = pd.DataFrame(ohlcv_1d, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df_1d['datetime'] = pd.to_datetime(df_1d['datetime'], utc=True, unit='ms')
         df_1d['datetime'] = df_1d['datetime'].dt.tz_convert("Asia/Seoul")
-        df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=14), 1)
+        df_1d['cci_1d']   = round(ta.cci(df_1d['high'], df_1d['low'], df_1d['close'], length=10), 1)
         df_1d['cci_14d_ma'] = df_1d['cci_1d'].rolling(window=14).mean()
 
         cci_1d = df_1d['cci_1d'].iloc[-1]
@@ -463,7 +461,7 @@ def market_buy_coin(exchange, symbol, amount):
     exchange.create_market_buy_order(symbol = symbol, amount = amount_krw)
 
 def market_sell_coin(exchange, symbol, amount, price):
-    
+
     # Calculate sell amount and adjust to meet precision and minimum order amount
     sell_amount = round(amount / price, 4)
 

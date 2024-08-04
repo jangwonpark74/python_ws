@@ -300,10 +300,10 @@ def monitor_daily_pct(exchange, symbols: list[str])->None:
             df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
 
             df['pct']= df['close'].pct_change(periods=1) * 100
-            data = df['pct'][-10:]
+            data = df['pct'][-14:]
             data = data.reset_index(drop=True)
-
-            pprint( {s : data}  )
+            print(f"{s}\n")
+            pprint(data)
 
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))
@@ -775,6 +775,8 @@ if __name__=='__main__':
     #defile list of symbols 
     symbols= [doge, xrp, sol, eth, btc]
 
+    schedule.every(10).seconds.do(monitor_daily_pct, exchange, symbols)
+
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_cci_trend, exchange, doge)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, doge)
@@ -820,7 +822,6 @@ if __name__=='__main__':
     schedule.every(20).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
-    schedule.every(30).seconds.do(monitor_daily_pct, exchange, symbols)
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(monitor_volume, exchange)

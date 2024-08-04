@@ -46,19 +46,13 @@ supertrend_sell_decision = defaultdict(bool)
 supertrend_buy_amount  = 1000000
 supertrend_buy_decision = defaultdict(bool)
 
+cci_uptrend = defaultdict(bool)
+cci_downtrend = defaultdict(bool)
+cci_trend_amount = 10000000
+
 my_balance = defaultdict(float)
 
 pullback_portion = 0.9
-
-daily_pct_map = defaultdict(lambda: defaultdict(float))
-daily_down_state = defaultdict(lambda: defaultdict(bool))
-daily_up_state = defaultdict(lambda: defaultdict(bool))
-
-
-# Todo List (2024/07/31)
-# 1. Supertrend based Dual Momentum Strategy implementation 
-# 2. Average CCI/MFI based recommendation implementation 
-# 3. Integrating portfolio managment 
 
 def write_to_csv(row_dict, file_name):
 
@@ -272,52 +266,44 @@ def analyze_cci_scalping_signal(exchange, symbol: str)->None:
         logging.info("Exception in analyze_cci_signal : %s", str(e))
 
 
-def analyze_daily_pct(exchange, symbol: str)->None:
+def analyze_cci_trend(exchange, symbol: str)->None:
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='1d')
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe='5m')
         df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
         df['datetime'] = df['datetime'].dt.tz_convert("Asia/Seoul")
+        df['cci_5m']   = round(ta.cci(df['high'], df['low'], df['close'], length=10), 1)
+
+        df['trend'] = df['cci_5m'].apply(lambda x: 'Red' if x >=10 else 'Blue')
+
+        df['start_down'] = (df['trend'].iloc[-2] == 'Red') and (df['trend'].iloc[-1] =='Blue')
+        df['start_up']   = (df['trend'].iloc[-2] == 'Blue') and (df['trend'].iloc[-1] == 'Red' )
+
+        global cci_uptrend
+        cci_uptrend = df['start_up'].iloc[-1]
+        cci_downtrend = df['start_down'].iloc[-1]
+
+        print(f'\n----------- {symbol} CCI Trend Analysis ( cci(10, 5minutes) --------------')
+        pprint(df.iloc[-1])
+        pprint("cci_uptrend = ", cci_uptrend, " cci_downtrend = ", cci_downtrend)
+
+    except Exception as e:
+        logging.info("Exception in analyze_cci_signal : %s", str(e))
 
 
-        # Calculate consecutive day percentage change up to 10 days
-        for i in range(1, 11):
-            df[f'{i}d_pct'] = df['close'].pct_change(periods=i) * 100
-            df['sum'] = df['sum'] + df[f'{i}d_pct']
-        print(f'\n-----------{symbol} last 10 day consecutive --------------')
-        x = df.iloc[-1].drop("volume")
-        pprint(x)
+def monitor_daily_pct(exchange, symbols: list[str])->None:
+    try:
 
-        global daily_pct_map
-        daily_pct_map[symbol] = x
+        for s in symbols:
+            ohlcv = exchange.fetch_ohlcv(s, timeframe='1d')
+            df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
+            df['datetime'] = pd.to_datetime(df['datetime'], utc=True, unit='ms')
 
-        three_day_down = (x['1d_pct'] < -0.01 ) and (x['3d_pct'] < x['1d_pct'])
-        five_day_down = three_day_down and (x['5d_pct'] < x['3d_pct'])
-        seven_day_down = five_day_down and (x['7d_pct'] < x['5d_pct'])
-        nine_day_down = seven_day_down and (x['9d_pct'] < x['7d_pct'])
+            df['pct']= df['close'].pct_change(periods=1) * 100
+            data = df['pct'][-10:]
+            data = data.reset_index(drop=True)
 
-        three_day_up = (x['1d_pct'] > 0.01 ) and (x['3d_pct'] > x['1d_pct'])
-        five_day_up = three_day_up and (x['5d_pct'] > x['3d_pct'])
-        seven_day_up = five_day_up and (x['7d_pct'] > x['5d_pct'])
-        nine_day_up = seven_day_up and (x['9d_pct'] > x['7d_pct']) 
-
-        global daily_down_state
-        daily_down_state[symbol]['3d_down'] = three_day_down
-        daily_down_state[symbol]['5d_down'] = five_day_down
-        daily_down_state[symbol]['7d_down'] = seven_day_down
-        daily_down_state[symbol]['9d_down'] = nine_day_down
-
-        global daily_up_state
-        daily_up_state[symbol]['3d_up'] = three_day_up
-        daily_up_state[symbol]['5d_up'] = five_day_up
-        daily_up_state[symbol]['7d_up'] = seven_day_up
-        daily_up_state[symbol]['9d_up'] = nine_day_up
-
-        print(f'\n-----------{symbol} consecutive down state --------------')
-        pprint(daily_down_state[symbol])
-
-        print(f'\n-----------{symbol} consecutive up state --------------')
-        pprint(daily_up_state[symbol])
+            pprint( {s : data}  )
 
     except Exception as e:
         logging.info("Exception in analyze_daily_pct : %s", str(e))
@@ -760,11 +746,6 @@ def monitor_volume(exchange):
     except Exception as e:
         print("Exception : ", str(e))
 
-def monitor_daily_pct():
-    print("\n---------------- monitor daily pct  -----------------")
-    pprint(daily_pct_map)
-
-
 def init_upbit():
     print('\n-----------------Upbit Exchange Initialization-------------------------')
     print(f'Initialized CCXT with version : {ccxt.__version__}')
@@ -795,35 +776,35 @@ if __name__=='__main__':
     symbols= [doge, xrp, sol, eth, btc]
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, doge)
-    schedule.every(10).seconds.do(analyze_daily_pct, exchange, doge)
+    schedule.every(10).seconds.do(analyze_cci_trend, exchange, doge)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, doge)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, doge)
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, xrp)
-    schedule.every(10).seconds.do(analyze_daily_pct, exchange, xrp)
+    schedule.every(10).seconds.do(analyze_cci_trend, exchange, xrp)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, xrp)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, xrp)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, xrp)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, xrp)
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, btc)
-    schedule.every(10).seconds.do(analyze_daily_pct, exchange, btc)
+    schedule.every(10).seconds.do(analyze_cci_trend, exchange, btc)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, btc)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, btc)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, btc)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, btc)
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, sol)
-    schedule.every(10).seconds.do(analyze_daily_pct, exchange, sol)
+    schedule.every(10).seconds.do(analyze_cci_trend, exchange, sol)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, sol)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, sol)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, sol)
     schedule.every(10).seconds.do(analyze_supertrend_signal, exchange, sol)
 
     schedule.every(10).seconds.do(analyze_cci_scalping_signal, exchange, eth)
-    schedule.every(10).seconds.do(analyze_daily_pct, exchange, eth)
+    schedule.every(10).seconds.do(analyze_cci_trend, exchange, eth)
     schedule.every(10).seconds.do(analyze_mfi_signal, exchange, eth)
     schedule.every(10).seconds.do(analyze_cci_signal, exchange, eth)
     schedule.every(10).seconds.do(analyze_stochrsi_signal, exchange, eth)
@@ -839,10 +820,10 @@ if __name__=='__main__':
     schedule.every(20).minutes.do(execute_supertrend_buy, exchange, doge)
 
     # monitoring every 30 seconds
+    schedule.every(30).seconds.do(monitor_daily_pct, exchange, symbols)
     schedule.every(30).seconds.do(monitor_signals, symbols)
     schedule.every(30).seconds.do(monitor_balance, exchange)
     schedule.every(30).seconds.do(monitor_volume, exchange)
-    schedule.every(30).seconds.do(monitor_daily_pct)
 
     while True:
         schedule.run_pending()
